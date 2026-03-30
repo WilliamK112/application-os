@@ -8,33 +8,200 @@ import {
   deleteInterviewAction,
   INTERVIEW_TYPE_LABELS,
 } from "@/app/interviews/actions";
-import type { Interview } from "@/types/domain";
+import type { Interview, InterviewQuestion, QuestionCategory } from "@/types/domain";
 
 const OUTCOME_OPTIONS = ["positive", "neutral", "negative", "pending"];
+
+const QUESTION_CATEGORY_LABELS: Record<QuestionCategory, string> = {
+  BEHAVIORAL: "Behavioral",
+  TECHNICAL: "Technical",
+  SYSTEM_DESIGN: "System Design",
+  CODING: "Coding",
+  LEADERSHIP: "Leadership",
+  CULTURE_FIT: "Culture Fit",
+  COMPENSATION: "Compensation",
+  OTHER: "Other",
+};
+
+function QuestionBankPicker({
+  questions,
+  selectedIds,
+  onChange,
+  name,
+}: {
+  questions: InterviewQuestion[];
+  selectedIds: string[];
+  onChange: (ids: string[]) => void;
+  name: string;
+}) {
+  const [activeCategory, setActiveCategory] = useState<QuestionCategory | "ALL">("ALL");
+  const [search, setSearch] = useState("");
+  const [showPicker, setShowPicker] = useState(false);
+
+  const categories = Object.keys(QUESTION_CATEGORY_LABELS) as QuestionCategory[];
+
+  const filtered = questions.filter((q) => {
+    const matchesCategory = activeCategory === "ALL" || q.category === activeCategory;
+    const matchesSearch = !search || q.question.toLowerCase().includes(search.toLowerCase());
+    return matchesCategory && matchesSearch;
+  });
+
+  function toggleQuestion(id: string) {
+    if (selectedIds.includes(id)) {
+      onChange(selectedIds.filter((i) => i !== id));
+    } else {
+      onChange([...selectedIds, id]);
+    }
+  }
+
+  return (
+    <div className="rounded-lg border border-purple-200 bg-purple-50 p-3">
+      <div className="mb-2 flex items-center justify-between">
+        <span className="text-sm font-medium text-purple-700">📚 Pick from Question Bank ({selectedIds.length} selected)</span>
+        <button
+          type="button"
+          onClick={() => setShowPicker(!showPicker)}
+          className="text-xs text-purple-600 hover:text-purple-800"
+        >
+          {showPicker ? "Hide bank" : "Show bank"}
+        </button>
+      </div>
+
+      {/* Selected chips */}
+      {selectedIds.length > 0 && (
+        <div className="mb-2 flex flex-wrap gap-1">
+          {selectedIds.map((id) => {
+            const q = questions.find((q) => q.id === id);
+            if (!q) return null;
+            return (
+              <span
+                key={id}
+                className="inline-flex items-center gap-1 rounded-full bg-purple-200 px-2 py-0.5 text-xs text-purple-800"
+              >
+                {q.question.slice(0, 30)}{q.question.length > 30 ? "…" : ""}
+                <button
+                  type="button"
+                  onClick={() => toggleQuestion(id)}
+                  className="font-bold hover:text-purple-900"
+                >
+                  ×
+                </button>
+              </span>
+            );
+          })}
+        </div>
+      )}
+
+      {showPicker && (
+        <div className="mt-2 space-y-2">
+          {/* Category pills */}
+          <div className="flex flex-wrap gap-1">
+            <button
+              type="button"
+              onClick={() => setActiveCategory("ALL")}
+              className={`rounded-full px-2 py-0.5 text-xs ${
+                activeCategory === "ALL"
+                  ? "bg-purple-600 text-white"
+                  : "bg-purple-100 text-purple-700 hover:bg-purple-200"
+              }`}
+            >
+              All
+            </button>
+            {categories.map((cat) => (
+              <button
+                key={cat}
+                type="button"
+                onClick={() => setActiveCategory(cat)}
+                className={`rounded-full px-2 py-0.5 text-xs ${
+                  activeCategory === cat
+                    ? "bg-purple-600 text-white"
+                    : "bg-purple-100 text-purple-700 hover:bg-purple-200"
+                }`}
+              >
+                {QUESTION_CATEGORY_LABELS[cat]}
+              </button>
+            ))}
+          </div>
+
+          {/* Search */}
+          <input
+            type="text"
+            placeholder="Search questions..."
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            className="w-full rounded-md border border-purple-300 px-3 py-1.5 text-sm"
+          />
+
+          {/* Question list */}
+          <div className="max-h-48 overflow-y-auto space-y-1">
+            {filtered.length === 0 && (
+              <p className="text-xs text-slate-500 py-2 text-center">No questions found</p>
+            )}
+            {filtered.map((q) => {
+              const checked = selectedIds.includes(q.id);
+              return (
+                <label
+                  key={q.id}
+                  className={`flex items-start gap-2 rounded p-1.5 cursor-pointer ${
+                    checked ? "bg-purple-100" : "hover:bg-slate-50"
+                  }`}
+                >
+                  <input
+                    type="checkbox"
+                    checked={checked}
+                    onChange={() => toggleQuestion(q.id)}
+                    className="mt-0.5 shrink-0"
+                  />
+                  <div className="min-w-0">
+                    <p className="text-xs text-slate-800 leading-snug">{q.question}</p>
+                    <p className="text-xs text-slate-400">
+                      {QUESTION_CATEGORY_LABELS[q.category]}
+                      {q.usageCount > 0 && ` · used ${q.usageCount}x`}
+                    </p>
+                  </div>
+                </label>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      {/* Hidden inputs for form submission */}
+      {selectedIds.map((id) => (
+        <input key={id} type="hidden" name={name} value={id} />
+      ))}
+    </div>
+  );
+}
 
 function InterviewEditForm({
   interview,
   applicationMap,
+  questionBank,
   onCancel,
 }: {
   interview: Interview;
   applicationMap: Record<string, string>;
+  questionBank: InterviewQuestion[];
   onCancel: () => void;
 }) {
+  const [selectedQuestionIds, setSelectedQuestionIds] = useState<string[]>([]);
   const [state, formAction, isPending] = useActionState(updateInterviewAction, { error: "" });
   const [deleteState, deleteAction, isDeleting] = useActionState(deleteInterviewAction, { error: "" });
 
+  // Reload on success (non-pending, no error)
   useEffect(() => {
-    if (state.interviewId) {
+    if (!isPending && !state.error) {
       window.location.reload();
     }
-  }, [state.interviewId]);
+  }, [isPending, state.error]);
 
   return (
     <div className="rounded-lg border border-blue-200 bg-blue-50 p-4">
       <h3 className="mb-3 font-semibold">Edit Interview</h3>
       <form action={formAction} className="space-y-3">
         <input type="hidden" name="interviewId" value={interview.id} />
+        <input type="hidden" name="questionIds" value={selectedQuestionIds.join(",")} />
         <div className="grid gap-3 sm:grid-cols-2">
           <div>
             <label className="block text-sm font-medium text-slate-700">Application</label>
@@ -141,6 +308,14 @@ function InterviewEditForm({
             className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm"
           />
         </div>
+
+        <QuestionBankPicker
+          questions={questionBank}
+          selectedIds={selectedQuestionIds}
+          onChange={setSelectedQuestionIds}
+          name="questionIds"
+        />
+
         {state.error && <p className="text-sm text-red-600">{state.error}</p>}
         <div className="flex gap-2">
           <button
@@ -177,11 +352,13 @@ function InterviewEditForm({
 function InterviewCard({
   interview,
   applicationMap,
+  questionBank,
   editingId,
   onEdit,
 }: {
   interview: Interview;
   applicationMap: Record<string, string>;
+  questionBank: InterviewQuestion[];
   editingId: string | null;
   onEdit: (id: string) => void;
 }) {
@@ -190,6 +367,7 @@ function InterviewCard({
       <InterviewEditForm
         interview={interview}
         applicationMap={applicationMap}
+        questionBank={questionBank}
         onCancel={() => onEdit("")}
       />
     );
@@ -277,13 +455,16 @@ export function InterviewList({
   interviews,
   applicationMap,
   defaultApplicationId,
+  questionBank,
 }: {
   interviews: Interview[];
   applicationMap: Record<string, string>;
   defaultApplicationId?: string;
+  questionBank: InterviewQuestion[];
 }) {
   const [showCreate, setShowCreate] = useState(!!defaultApplicationId);
   const [editingId, setEditingId] = useState<string | null>(null);
+  const [selectedQuestionIds, setSelectedQuestionIds] = useState<string[]>([]);
   const [state, formAction, isPending] = useActionState(createInterviewAction, {
     error: "",
   });
@@ -318,6 +499,7 @@ export function InterviewList({
         <div className="rounded-lg border border-blue-200 bg-blue-50 p-4">
           <h3 className="mb-3 font-semibold">Schedule Interview</h3>
           <form action={formAction} className="space-y-3">
+            <input type="hidden" name="questionIds" value={selectedQuestionIds.join(",")} />
             <div className="grid gap-3 sm:grid-cols-2">
               <div>
                 <label className="block text-sm font-medium text-slate-700">Application *</label>
@@ -426,6 +608,14 @@ export function InterviewList({
                 className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm"
               />
             </div>
+
+            <QuestionBankPicker
+              questions={questionBank}
+              selectedIds={selectedQuestionIds}
+              onChange={setSelectedQuestionIds}
+              name="questionIds"
+            />
+
             {state.error && <p className="text-sm text-red-600">{state.error}</p>}
             <button
               type="submit"
@@ -449,6 +639,7 @@ export function InterviewList({
               key={interview.id}
               interview={interview}
               applicationMap={applicationMap}
+              questionBank={questionBank}
               editingId={editingId}
               onEdit={setEditingId}
             />

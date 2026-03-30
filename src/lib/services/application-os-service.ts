@@ -76,6 +76,9 @@ export interface ApplicationOsService {
   createQuestion(userId: string, input: { category: string; question: string; answerHints?: string; tags?: string[] }): Promise<InterviewQuestion>;
   updateQuestion(userId: string, questionId: string, input: { category?: string; question?: string; answerHints?: string; tags?: string[] }): Promise<InterviewQuestion>;
   deleteQuestion(userId: string, questionId: string): Promise<void>;
+  getQuestionIdsByInterview(interviewId: string): Promise<string[]>;
+  addQuestionUsages(interviewId: string, questionIds: string[]): Promise<void>;
+  removeQuestionUsagesByInterview(interviewId: string): Promise<void>;
   listCompanies(userId: string): Promise<Company[]>;
   getCompany(userId: string, companyId: string): Promise<Company | null>;
   getCompanyWithStats(userId: string, companyId: string): Promise<CompanyWithStats | null>;
@@ -218,6 +221,18 @@ class DefaultApplicationOsService implements ApplicationOsService {
 
   async deleteQuestion(userId: string, questionId: string): Promise<void> {
     return this.repository.deleteQuestion(userId, questionId);
+  }
+
+  async getQuestionIdsByInterview(interviewId: string): Promise<string[]> {
+    return this.repository.getQuestionIdsByInterview(interviewId);
+  }
+
+  async addQuestionUsages(interviewId: string, questionIds: string[]): Promise<void> {
+    return this.repository.addQuestionUsages(interviewId, questionIds);
+  }
+
+  async removeQuestionUsagesByInterview(interviewId: string): Promise<void> {
+    return this.repository.removeQuestionUsagesByInterview(interviewId);
   }
 
   async listCompanies(userId: string): Promise<Company[]> {

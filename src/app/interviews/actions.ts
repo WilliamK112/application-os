@@ -33,6 +33,7 @@ const createInterviewSchema = z.object({
   location: z.string().trim().max(200).optional(),
   notes: z.string().trim().max(2000).optional(),
   questions: z.string().trim().max(2000).optional(), // comma-separated
+  questionIds: z.string().trim().max(1000).optional(), // comma-separated question bank IDs
   rating: z.coerce.number().int().min(1).max(5).optional(),
   outcome: z.string().trim().max(50).optional(),
 });
@@ -57,6 +58,7 @@ export async function createInterviewAction(
     location: formData.get("location") || undefined,
     notes: formData.get("notes") || undefined,
     questions: formData.get("questions") || undefined,
+    questionIds: formData.get("questionIds") || undefined,
     rating: formData.get("rating") || undefined,
     outcome: formData.get("outcome") || undefined,
   });
@@ -69,11 +71,18 @@ export async function createInterviewAction(
     ? parsed.data.questions.split(",").map((q) => q.trim()).filter(Boolean)
     : [];
 
+  const questionIds = parsed.data.questionIds
+    ? parsed.data.questionIds.split(",").map((q) => q.trim()).filter(Boolean)
+    : [];
+
   try {
     const interview = await applicationOsService.createInterview(user.id, {
       ...parsed.data,
       questions,
     });
+    if (questionIds.length > 0) {
+      await applicationOsService.addQuestionUsages(interview.id, questionIds);
+    }
     return { error: "", interviewId: interview.id };
   } catch (err) {
     const message = err instanceof Error ? err.message : "Unable to create interview";
@@ -90,6 +99,7 @@ const updateInterviewSchema = z.object({
   location: z.string().trim().max(200).optional().nullable(),
   notes: z.string().trim().max(2000).optional().nullable(),
   questions: z.string().trim().max(2000).optional().nullable(),
+  questionIds: z.string().trim().max(1000).optional().nullable(),
   rating: z.coerce.number().int().min(1).max(5).optional().nullable(),
   outcome: z.string().trim().max(50).optional().nullable(),
 });
@@ -113,6 +123,7 @@ export async function updateInterviewAction(
     location: formData.get("location") || undefined,
     notes: formData.get("notes") || undefined,
     questions: formData.get("questions") || undefined,
+    questionIds: formData.get("questionIds") || undefined,
     rating: formData.get("rating") || undefined,
     outcome: formData.get("outcome") || undefined,
   });
@@ -121,9 +132,13 @@ export async function updateInterviewAction(
     return { error: parsed.error.issues[0]?.message ?? "Invalid input" };
   }
 
-  const { interviewId, questions: questionsStr, ...rest } = parsed.data;
+  const { interviewId, questions: questionsStr, questionIds: questionIdsStr, ...rest } = parsed.data;
   const questions = questionsStr
     ? questionsStr.split(",").map((q: string) => q.trim()).filter(Boolean)
+    : null;
+
+  const questionIds = questionIdsStr
+    ? questionIdsStr.split(",").map((q: string) => q.trim()).filter(Boolean)
     : null;
 
   try {
@@ -131,6 +146,11 @@ export async function updateInterviewAction(
       ...rest,
       questions,
     });
+    // Sync question bank usages: remove old, add new
+    await applicationOsService.removeQuestionUsagesByInterview(interviewId);
+    if (questionIds && questionIds.length > 0) {
+      await applicationOsService.addQuestionUsages(interviewId, questionIds);
+    }
     return { error: "" };
   } catch (err) {
     const message = err instanceof Error ? err.message : "Unable to update interview";

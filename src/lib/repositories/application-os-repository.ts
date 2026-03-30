@@ -195,6 +195,9 @@ export interface ApplicationOsRepository {
   createQuestion(userId: string, input: CreateQuestionInput): Promise<InterviewQuestion>;
   updateQuestion(userId: string, questionId: string, input: UpdateQuestionInput): Promise<InterviewQuestion>;
   deleteQuestion(userId: string, questionId: string): Promise<void>;
+  getQuestionIdsByInterview(interviewId: string): Promise<string[]>;
+  addQuestionUsages(interviewId: string, questionIds: string[]): Promise<void>;
+  removeQuestionUsagesByInterview(interviewId: string): Promise<void>;
   getDashboardSnapshot(userId: string): Promise<DashboardSnapshot>;
   createFollowUp(userId: string, input: CreateFollowUpInput): Promise<FollowUp>;
   updateFollowUpStatus(userId: string, input: UpdateFollowUpStatusInput): Promise<FollowUp>;
@@ -806,6 +809,8 @@ class MockApplicationOsRepository implements ApplicationOsRepository {
     },
   ];
 
+  private readonly questionUsages: { interviewId: string; questionId: string }[] = [];
+
   async listQuestions(userId: string, input?: ListQuestionsInput): Promise<InterviewQuestion[]> {
     let results = this.questions.filter((q) => q.userId === userId);
     if (input?.category) {
@@ -855,6 +860,31 @@ class MockApplicationOsRepository implements ApplicationOsRepository {
     const idx = this.questions.findIndex((q) => q.id === questionId && q.userId === userId);
     if (idx === -1) throw new Error("Question not found");
     this.questions.splice(idx, 1);
+  }
+
+  async getQuestionIdsByInterview(interviewId: string): Promise<string[]> {
+    return this.questionUsages
+      .filter((u) => u.interviewId === interviewId)
+      .map((u) => u.questionId);
+  }
+
+  async addQuestionUsages(interviewId: string, questionIds: string[]): Promise<void> {
+    for (const qId of questionIds) {
+      if (!this.questionUsages.some((u) => u.interviewId === interviewId && u.questionId === qId)) {
+        this.questionUsages.push({ interviewId, questionId: qId });
+        const q = this.questions.find((q) => q.id === qId);
+        if (q) q.usageCount = (q.usageCount ?? 0) + 1;
+      }
+    }
+  }
+
+  async removeQuestionUsagesByInterview(interviewId: string): Promise<void> {
+    const toRemove = this.questionUsages.filter((u) => u.interviewId === interviewId);
+    for (const u of toRemove) {
+      const q = this.questions.find((q) => q.id === u.questionId);
+      if (q && q.usageCount != null && q.usageCount > 0) q.usageCount -= 1;
+    }
+    this.questionUsages = this.questionUsages.filter((u) => u.interviewId !== interviewId);
   }
 
   async getDashboardSnapshot(userId: string): Promise<DashboardSnapshot> {
@@ -1557,6 +1587,39 @@ class PrismaApplicationOsRepository implements ApplicationOsRepository {
     });
     if (!existing) throw new Error("Question not found");
     await prisma.interviewQuestion.delete({ where: { id: questionId } });
+  }
+
+  async getQuestionIdsByInterview(interviewId: string): Promise<string[]> {
+    const usages = await prisma.interviewQuestionUsage.findMany({
+      where: { interviewId },
+      select: { questionId: true },
+    });
+    return usages.map((u) => u.questionId);
+  }
+
+  async addQuestionUsages(interviewId: string, questionIds: string[]): Promise<void> {
+    await prisma.interviewQuestionUsage.createMany({
+      data: questionIds.map((questionId) => ({ interviewId, questionId })),
+      skipDuplicates: true,
+    });
+    await prisma.interviewQuestion.updateMany({
+      where: { id: { in: questionIds } },
+      data: { usageCount: { increment: 1 } },
+    });
+  }
+
+  async removeQuestionUsagesByInterview(interviewId: string): Promise<void> {
+    const usages = await prisma.interviewQuestionUsage.findMany({
+      where: { interviewId },
+      select: { questionId: true },
+    });
+    await prisma.interviewQuestionUsage.deleteMany({ where: { interviewId } });
+    if (usages.length > 0) {
+      await prisma.interviewQuestion.updateMany({
+        where: { id: { in: usages.map((u) => u.questionId) } },
+        data: { usageCount: { decrement: 1 } },
+      });
+    }
   }
 
   async getDashboardSnapshot(userId: string): Promise<DashboardSnapshot> {

@@ -11,9 +11,10 @@ interface InterviewsPageProps {
 export default async function InterviewsPage({ searchParams }: InterviewsPageProps) {
   const { applicationId } = await searchParams;
   const user = await getCurrentUserOrThrow();
-  const [interviews, applications] = await Promise.all([
+  const [interviews, applications, questions] = await Promise.all([
     applicationOsService.listInterviews(user.id),
     applicationOsService.getApplications(user.id),
+    applicationOsService.listQuestions(user.id),
   ]);
 
   const applicationMap = Object.fromEntries(
@@ -30,6 +31,7 @@ export default async function InterviewsPage({ searchParams }: InterviewsPagePro
           interviews={interviews}
           applicationMap={applicationMap}
           defaultApplicationId={applicationId}
+          questionBank={questions}
         />
       </Suspense>
     </AppShell>
