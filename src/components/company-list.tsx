@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import type { Company } from "@/types/domain";
 import {
   createCompanyAction,
@@ -38,7 +39,11 @@ function CompanyCard({ company }: { company: Company }) {
         <>
           <div className="flex items-start justify-between">
             <div>
-              <h3 className="font-semibold text-slate-900">{company.name}</h3>
+              <h3 className="font-semibold text-slate-900">
+                <Link href={`/companies/${company.id}`} className="hover:text-blue-600">
+                  {company.name}
+                </Link>
+              </h3>
               {company.industry && (
                 <p className="text-sm text-slate-500">{company.industry}</p>
               )}

@@ -179,3 +179,27 @@ export interface ApplicationWithJob {
 export interface ApplicationWithJobAndInterviews extends ApplicationWithJob {
   interviews: Interview[];
 }
+
+export interface JobWithAppCount {
+  id: string;
+  userId: string;
+  company: string;
+  companyId?: string;
+  title: string;
+  location?: string;
+  source?: string;
+  salaryMin?: number;
+  salaryMax?: number;
+  status: JobStatus;
+  url?: string;
+  notes?: string;
+  createdAt: ISODateString;
+  updatedAt: ISODateString;
+  applicationCount: number;
+}
+
+export interface CompanyWithStats {
+  company: Company;
+  jobs: JobWithAppCount[];
+  totalApplications: number;
+}

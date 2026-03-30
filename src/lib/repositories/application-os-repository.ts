@@ -22,6 +22,7 @@ import type {
   AutoApplyRunLog,
   AutoApplyRunStatus,
   Company,
+  CompanyWithStats,
   DashboardSnapshot,
   Document,
   FollowUp,
@@ -29,6 +30,7 @@ import type {
   InterviewType,
   Job,
   JobStatus,
+  JobWithAppCount,
   Profile,
   User,
 } from "@/types/domain";
@@ -170,6 +172,8 @@ export interface ApplicationOsRepository {
   createFollowUp(userId: string, input: CreateFollowUpInput): Promise<FollowUp>;
   updateFollowUpStatus(userId: string, input: UpdateFollowUpStatusInput): Promise<FollowUp>;
   listCompanies(userId: string): Promise<Company[]>;
+  getCompany(userId: string, companyId: string): Promise<Company | null>;
+  getCompanyWithStats(userId: string, companyId: string): Promise<CompanyWithStats | null>;
   createCompany(userId: string, input: CreateCompanyInput): Promise<Company>;
   updateCompany(userId: string, companyId: string, input: Partial<CreateCompanyInput>): Promise<Company>;
   deleteCompany(userId: string, companyId: string): Promise<void>;
@@ -741,6 +745,13 @@ class MockApplicationOsRepository implements ApplicationOsRepository {
       orderBy: { name: "asc" },
     });
     return companies.map(mapCompany);
+  }
+
+  async getCompany(userId: string, companyId: string): Promise<Company | null> {
+    const company = await prisma.company.findFirst({
+      where: { id: companyId, userId },
+    });
+    return company ? mapCompany(company) : null;
   }
 
   async createCompany(userId: string, input: CreateCompanyInput): Promise<Company> {
@@ -1334,6 +1345,13 @@ class PrismaApplicationOsRepository implements ApplicationOsRepository {
       orderBy: { name: "asc" },
     });
     return companies.map(mapCompany);
+  }
+
+  async getCompany(userId: string, companyId: string): Promise<Company | null> {
+    const company = await prisma.company.findFirst({
+      where: { id: companyId, userId },
+    });
+    return company ? mapCompany(company) : null;
   }
 
   async createCompany(userId: string, input: CreateCompanyInput): Promise<Company> {

@@ -71,6 +71,7 @@ export interface ApplicationOsService {
   }): Promise<Interview>;
   deleteInterview(userId: string, interviewId: string): Promise<void>;
   listCompanies(userId: string): Promise<Company[]>;
+  getCompany(userId: string, companyId: string): Promise<Company | null>;
   createCompany(userId: string, input: CreateCompanyInput): Promise<Company>;
   updateCompany(userId: string, companyId: string, input: Partial<CreateCompanyInput>): Promise<Company>;
   deleteCompany(userId: string, companyId: string): Promise<void>;
@@ -185,6 +186,10 @@ class DefaultApplicationOsService implements ApplicationOsService {
 
   async listCompanies(userId: string): Promise<Company[]> {
     return this.repository.listCompanies(userId);
+  }
+
+  async getCompany(userId: string, companyId: string): Promise<Company | null> {
+    return this.repository.getCompany(userId, companyId);
   }
 
   async createCompany(userId: string, input: CreateCompanyInput): Promise<Company> {
