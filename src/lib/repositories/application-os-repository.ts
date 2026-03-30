@@ -11,6 +11,7 @@ import {
   type Job as PrismaJob,
   type Profile as PrismaProfile,
   type User as PrismaUser,
+  type Company as PrismaCompany,
 } from "@prisma/client";
 import type {
   Application,
@@ -20,6 +21,7 @@ import type {
   AutoApplyFailureCategory,
   AutoApplyRunLog,
   AutoApplyRunStatus,
+  Company,
   DashboardSnapshot,
   Document,
   FollowUp,
@@ -39,6 +41,15 @@ export interface CreateJobInput {
   source?: string;
   status?: JobStatus;
   url?: string;
+  notes?: string;
+}
+
+export interface CreateCompanyInput {
+  name: string;
+  website?: string;
+  industry?: string;
+  size?: string;
+  location?: string;
   notes?: string;
 }
 
@@ -157,6 +168,10 @@ export interface ApplicationOsRepository {
   getDashboardSnapshot(userId: string): Promise<DashboardSnapshot>;
   createFollowUp(userId: string, input: CreateFollowUpInput): Promise<FollowUp>;
   updateFollowUpStatus(userId: string, input: UpdateFollowUpStatusInput): Promise<FollowUp>;
+  listCompanies(userId: string): Promise<Company[]>;
+  createCompany(userId: string, input: CreateCompanyInput): Promise<Company>;
+  updateCompany(userId: string, companyId: string, input: Partial<CreateCompanyInput>): Promise<Company>;
+  deleteCompany(userId: string, companyId: string): Promise<void>;
 }
 
 const now = new Date();
@@ -202,7 +217,7 @@ const mapProfile = (profile: PrismaProfile): Profile => ({
 const mapJob = (job: PrismaJob): Job => ({
   id: job.id,
   userId: job.userId,
-  company: job.company,
+  company: job.companyName,
   title: job.title,
   location: job.location ?? undefined,
   source: job.source ?? undefined,
@@ -242,7 +257,7 @@ const mapAutoApplyRunLog = (
   createdAt: runLog.createdAt.toISOString(),
   job: {
     id: runLog.job.id,
-    company: runLog.job.company,
+    company: runLog.job.companyName,
     title: runLog.job.title,
   },
 });
@@ -688,6 +703,41 @@ class MockApplicationOsRepository implements ApplicationOsRepository {
       upcomingInterviews,
     };
   }
+
+  async listCompanies(userId: string): Promise<Company[]> {
+    const companies = await prisma.company.findMany({
+      where: { userId },
+      orderBy: { name: "asc" },
+    });
+    return companies.map(mapCompany);
+  }
+
+  async createCompany(userId: string, input: CreateCompanyInput): Promise<Company> {
+    const company = await prisma.company.create({
+      data: { userId, ...input },
+    });
+    return mapCompany(company);
+  }
+
+  async updateCompany(
+    userId: string,
+    companyId: string,
+    input: Partial<CreateCompanyInput>,
+  ): Promise<Company> {
+    const existing = await prisma.company.findFirst({ where: { id: companyId, userId } });
+    if (!existing) throw new Error("Company not found");
+    const updated = await prisma.company.update({
+      where: { id: companyId },
+      data: input,
+    });
+    return mapCompany(updated);
+  }
+
+  async deleteCompany(userId: string, companyId: string): Promise<void> {
+    const existing = await prisma.company.findFirst({ where: { id: companyId, userId } });
+    if (!existing) throw new Error("Company not found");
+    await prisma.company.delete({ where: { id: companyId } });
+  }
 }
 
 class PrismaApplicationOsRepository implements ApplicationOsRepository {
@@ -721,7 +771,7 @@ class PrismaApplicationOsRepository implements ApplicationOsRepository {
     const job = await prisma.job.create({
       data: {
         userId,
-        company: input.company,
+        companyName: input.company,
         title: input.title,
         location: input.location,
         source: input.source,
@@ -1212,7 +1262,55 @@ class PrismaApplicationOsRepository implements ApplicationOsRepository {
       })),
     };
   }
+
+  async listCompanies(userId: string): Promise<Company[]> {
+    const companies = await prisma.company.findMany({
+      where: { userId },
+      orderBy: { name: "asc" },
+    });
+    return companies.map(mapCompany);
+  }
+
+  async createCompany(userId: string, input: CreateCompanyInput): Promise<Company> {
+    const company = await prisma.company.create({
+      data: { userId, ...input },
+    });
+    return mapCompany(company);
+  }
+
+  async updateCompany(
+    userId: string,
+    companyId: string,
+    input: Partial<CreateCompanyInput>,
+  ): Promise<Company> {
+    const existing = await prisma.company.findFirst({ where: { id: companyId, userId } });
+    if (!existing) throw new Error("Company not found");
+    const updated = await prisma.company.update({
+      where: { id: companyId },
+      data: input,
+    });
+    return mapCompany(updated);
+  }
+
+  async deleteCompany(userId: string, companyId: string): Promise<void> {
+    const existing = await prisma.company.findFirst({ where: { id: companyId, userId } });
+    if (!existing) throw new Error("Company not found");
+    await prisma.company.delete({ where: { id: companyId } });
+  }
 }
+
+const mapCompany = (c: PrismaCompany): Company => ({
+  id: c.id,
+  userId: c.userId,
+  name: c.name,
+  website: c.website ?? undefined,
+  industry: c.industry ?? undefined,
+  size: c.size ?? undefined,
+  location: c.location ?? undefined,
+  notes: c.notes ?? undefined,
+  createdAt: c.createdAt.toISOString(),
+  updatedAt: c.updatedAt.toISOString(),
+});
 
 const configuredProvider = process.env.APP_OS_REPOSITORY_PROVIDER?.toLowerCase();
 const hasDatabaseUrl = Boolean(process.env.DATABASE_URL && process.env.DATABASE_URL.trim().length > 0);

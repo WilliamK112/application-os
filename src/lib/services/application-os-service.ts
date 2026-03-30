@@ -2,6 +2,7 @@ import {
   applicationOsRepository,
   type ApplicationOsRepository,
   type CreateApplicationInput,
+  type CreateCompanyInput,
   type CreateFollowUpInput,
   type CreateJobInput,
   type UpdateApplicationStatusInput,
@@ -14,6 +15,7 @@ import type {
   ApplicationWithJob,
   ApplicationWithJobAndInterviews,
   AutoApplyRunLog,
+  Company,
   DashboardSnapshot,
   Document,
   FollowUp,
@@ -68,6 +70,10 @@ export interface ApplicationOsService {
     outcome?: string | null;
   }): Promise<Interview>;
   deleteInterview(userId: string, interviewId: string): Promise<void>;
+  listCompanies(userId: string): Promise<Company[]>;
+  createCompany(userId: string, input: CreateCompanyInput): Promise<Company>;
+  updateCompany(userId: string, companyId: string, input: Partial<CreateCompanyInput>): Promise<Company>;
+  deleteCompany(userId: string, companyId: string): Promise<void>;
 }
 
 class DefaultApplicationOsService implements ApplicationOsService {
@@ -175,6 +181,22 @@ class DefaultApplicationOsService implements ApplicationOsService {
 
   async deleteInterview(userId: string, interviewId: string): Promise<void> {
     return this.repository.deleteInterview(userId, interviewId);
+  }
+
+  async listCompanies(userId: string): Promise<Company[]> {
+    return this.repository.listCompanies(userId);
+  }
+
+  async createCompany(userId: string, input: CreateCompanyInput): Promise<Company> {
+    return this.repository.createCompany(userId, input);
+  }
+
+  async updateCompany(userId: string, companyId: string, input: Partial<CreateCompanyInput>): Promise<Company> {
+    return this.repository.updateCompany(userId, companyId, input);
+  }
+
+  async deleteCompany(userId: string, companyId: string): Promise<void> {
+    return this.repository.deleteCompany(userId, companyId);
   }
 }
 

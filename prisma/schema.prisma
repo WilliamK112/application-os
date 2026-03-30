@@ -78,6 +78,7 @@ model User {
   passwordResetTokens PasswordResetToken[]
   autoApplyRunLogs    AutoApplyRunLog[]
   interviews          Interview[]
+  companies           Company[]
 }
 
 model Interview {
@@ -118,10 +119,30 @@ model Profile {
   user               User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
 
+model Company {
+  id         String   @id @default(cuid())
+  userId     String
+  name       String
+  website    String?
+  industry   String?
+  size       String?  // e.g. "1-10", "51-200", "1000+"
+  location   String?
+  notes      String?
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  jobs       Job[]
+
+  @@index([userId, name])
+  @@unique([userId, name])
+}
+
 model Job {
   id            String        @id @default(cuid())
   userId        String
-  company       String
+  companyName   String
+  companyId     String?
   title         String
   location      String?
   source        String?
@@ -134,11 +155,12 @@ model Job {
   updatedAt     DateTime      @updatedAt
 
   user          User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  company       Company?      @relation(fields: [companyId], references: [id], onDelete: SetNull)
   applications      Application[]
   autoApplyRunLogs  AutoApplyRunLog[]
 
   @@index([userId, status])
-  @@index([company])
+  @@index([companyId])
 }
 
 model Application {
@@ -157,6 +179,7 @@ model Application {
   documents       ApplicationDocument[]
   followups       FollowUp[]
   autoApplyLogs   AutoApplyRunLog[]
+  interviews      Interview[]
 
   @@index([userId, status])
   @@index([jobId])

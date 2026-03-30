@@ -41,6 +41,7 @@ export interface Job {
   id: string;
   userId: string;
   company: string;
+  companyId?: string;
   title: string;
   location?: string;
   source?: string;
@@ -48,6 +49,19 @@ export interface Job {
   salaryMax?: number;
   status: JobStatus;
   url?: string;
+  notes?: string;
+  createdAt: ISODateString;
+  updatedAt: ISODateString;
+}
+
+export interface Company {
+  id: string;
+  userId: string;
+  name: string;
+  website?: string;
+  industry?: string;
+  size?: string;
+  location?: string;
   notes?: string;
   createdAt: ISODateString;
   updatedAt: ISODateString;
