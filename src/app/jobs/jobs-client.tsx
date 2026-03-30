@@ -82,7 +82,7 @@ export function JobsClient({ jobs }: { jobs: Job[] }) {
       </div>
 
       {/* Table */}
-      <div className="rounded-lg border border-slate-200 bg-white">
+      <div className="overflow-x-auto rounded-lg border border-slate-200 bg-white">
         <table className="min-w-full text-sm">
           <thead className="border-b bg-slate-50 text-left text-slate-600">
             <tr>
