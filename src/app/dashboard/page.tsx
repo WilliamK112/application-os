@@ -54,7 +54,14 @@ export default async function DashboardPage() {
       </section>
 
       <section className="mt-6 rounded-lg border border-slate-200 bg-white p-4">
-        <h3 className="text-lg font-semibold">Upcoming Interviews</h3>
+        <h3 className="text-lg font-semibold">
+          Upcoming Interviews
+          {snapshot.metrics.upcomingInterviewsTotal > 0 && (
+            <span className="ml-2 text-sm font-normal text-slate-500">
+              ({snapshot.metrics.upcomingInterviewsTotal} in next 7 days)
+            </span>
+          )}
+        </h3>
         {snapshot.upcomingInterviews.length === 0 ? (
           <p className="mt-3 text-sm text-slate-500">No upcoming interviews scheduled.</p>
         ) : (

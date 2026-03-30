@@ -410,6 +410,22 @@ class MockApplicationOsRepository implements ApplicationOsRepository {
       createdAt: isoDaysAgo(6),
       updatedAt: isoDaysAgo(5),
     },
+    {
+      id: "interview_2",
+      userId: "user_1",
+      applicationId: "app_2",
+      interviewType: "TECHNICAL",
+      interviewerName: "Alex Chen",
+      scheduledAt: isoDaysAfter(2),
+      durationMinutes: 60,
+      location: "Google Meet",
+      notes: "System design deep-dive.",
+      questions: ["Design a rate limiter", "OOD patterns"],
+      rating: undefined,
+      outcome: undefined,
+      createdAt: isoDaysAgo(1),
+      updatedAt: isoDaysAgo(1),
+    },
   ];
 
   async getCurrentUser(): Promise<User> {
@@ -857,10 +873,14 @@ class MockApplicationOsRepository implements ApplicationOsRepository {
     const pendingFollowUps = followUps.filter((followUp) => followUp.status === "PENDING");
 
     const now = new Date();
+    const sevenDaysLater = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
     const upcomingInterviews = interviews
       .filter((i) => i.scheduledAt && new Date(i.scheduledAt) >= now)
       .sort((a, b) => new Date(a.scheduledAt!).getTime() - new Date(b.scheduledAt!).getTime())
       .slice(0, 5);
+    const upcomingInterviewsTotal = interviews.filter(
+      (i) => i.scheduledAt && new Date(i.scheduledAt) >= now && new Date(i.scheduledAt) <= sevenDaysLater,
+    ).length;
 
     return {
       metrics: {
@@ -869,6 +889,7 @@ class MockApplicationOsRepository implements ApplicationOsRepository {
         activeApplications,
         pendingFollowUps: pendingFollowUps.length,
         totalInterviews: interviews.length,
+        upcomingInterviewsTotal,
       },
       upcomingFollowUps: pendingFollowUps.sort((a, b) => a.dueAt.localeCompare(b.dueAt)),
       upcomingInterviews,
@@ -1539,7 +1560,9 @@ class PrismaApplicationOsRepository implements ApplicationOsRepository {
   }
 
   async getDashboardSnapshot(userId: string): Promise<DashboardSnapshot> {
-    const [totalJobs, totalApplications, activeApplications, pendingFollowUps, upcomingFollowUps, totalInterviews, upcomingInterviews] =
+    const now = new Date();
+    const sevenDaysLater = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
+    const [totalJobs, totalApplications, activeApplications, pendingFollowUps, upcomingFollowUps, totalInterviews, upcomingInterviews, upcomingInterviewsTotal] =
       await Promise.all([
         prisma.job.count({ where: { userId } }),
         prisma.application.count({ where: { userId } }),
@@ -1559,9 +1582,12 @@ class PrismaApplicationOsRepository implements ApplicationOsRepository {
         }),
         prisma.interview.count({ where: { userId } }),
         prisma.interview.findMany({
-          where: { userId, scheduledAt: { gte: new Date() } },
+          where: { userId, scheduledAt: { gte: now } },
           orderBy: { scheduledAt: "asc" },
           take: 5,
+        }),
+        prisma.interview.count({
+          where: { userId, scheduledAt: { gte: now, lte: sevenDaysLater } },
         }),
       ]);
 
@@ -1572,6 +1598,7 @@ class PrismaApplicationOsRepository implements ApplicationOsRepository {
         activeApplications,
         pendingFollowUps,
         totalInterviews,
+        upcomingInterviewsTotal,
       },
       upcomingFollowUps: upcomingFollowUps.map((followUp) => ({
         id: followUp.id,

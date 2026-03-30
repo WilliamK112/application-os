@@ -111,6 +111,7 @@ export interface DashboardMetrics {
   activeApplications: number;
   pendingFollowUps: number;
   totalInterviews: number;
+  upcomingInterviewsTotal: number;
 }
 
 export interface DashboardSnapshot {
