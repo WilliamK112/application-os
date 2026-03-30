@@ -1,0 +1,84 @@
+"use server";
+
+import { z } from "zod";
+import { authSession } from "@/lib/auth/session-adapter";
+import { applicationOsService } from "@/lib/services/application-os-service";
+
+const INTERVIEW_TYPE_OPTIONS = [
+  "PHONE_SCREEN",
+  "TECHNICAL",
+  "BEHAVIORAL",
+  "SYSTEM_DESIGN",
+  "ONSITE",
+  "FINAL_ROUND",
+  "OTHER",
+] as const;
+
+const INTERVIEW_TYPE_LABELS: Record<string, string> = {
+  PHONE_SCREEN: "Phone Screen",
+  TECHNICAL: "Technical",
+  BEHAVIORAL: "Behavioral",
+  SYSTEM_DESIGN: "System Design",
+  ONSITE: "Onsite",
+  FINAL_ROUND: "Final Round",
+  OTHER: "Other",
+};
+
+const createInterviewSchema = z.object({
+  applicationId: z.string().trim().min(1, "Application is required"),
+  interviewType: z.enum(INTERVIEW_TYPE_OPTIONS),
+  interviewerName: z.string().trim().max(120).optional(),
+  scheduledAt: z.string().optional(),
+  durationMinutes: z.coerce.number().int().min(1).max(480).optional(),
+  location: z.string().trim().max(200).optional(),
+  notes: z.string().trim().max(2000).optional(),
+  questions: z.string().trim().max(2000).optional(), // comma-separated
+  rating: z.coerce.number().int().min(1).max(5).optional(),
+  outcome: z.string().trim().max(50).optional(),
+});
+
+export type CreateInterviewActionState = {
+  error: string;
+  interviewId?: string;
+};
+
+export async function createInterviewAction(
+  _prevState: CreateInterviewActionState,
+  formData: FormData,
+): Promise<CreateInterviewActionState> {
+  const user = await authSession.getCurrentUserOrThrow();
+
+  const parsed = createInterviewSchema.safeParse({
+    applicationId: String(formData.get("applicationId") ?? ""),
+    interviewType: String(formData.get("interviewType") ?? ""),
+    interviewerName: formData.get("interviewerName") || undefined,
+    scheduledAt: formData.get("scheduledAt") || undefined,
+    durationMinutes: formData.get("durationMinutes") || undefined,
+    location: formData.get("location") || undefined,
+    notes: formData.get("notes") || undefined,
+    questions: formData.get("questions") || undefined,
+    rating: formData.get("rating") || undefined,
+    outcome: formData.get("outcome") || undefined,
+  });
+
+  if (!parsed.success) {
+    return { error: parsed.error.issues[0]?.message ?? "Invalid input" };
+  }
+
+  const questions = parsed.data.questions
+    ? parsed.data.questions.split(",").map((q) => q.trim()).filter(Boolean)
+    : [];
+
+  try {
+    const interview = await applicationOsService.createInterview(user.id, {
+      ...parsed.data,
+      questions,
+    });
+    return { error: "", interviewId: interview.id };
+  } catch (err) {
+    const message = err instanceof Error ? err.message : "Unable to create interview";
+    return { error: message };
+  }
+}
+
+export { INTERVIEW_TYPE_OPTIONS, INTERVIEW_TYPE_LABELS };

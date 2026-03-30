@@ -3,6 +3,7 @@ import {
   AutoApplyFailureCategory as PrismaAutoApplyFailureCategory,
   AutoApplyRunStatus as PrismaAutoApplyRunStatus,
   DocumentType as PrismaDocumentType,
+  InterviewType as PrismaInterviewType,
   JobStatus as PrismaJobStatus,
   Prisma,
   type Application as PrismaApplication,
@@ -21,6 +22,8 @@ import type {
   DashboardSnapshot,
   Document,
   FollowUp,
+  Interview,
+  InterviewType,
   Job,
   JobStatus,
   Profile,
@@ -90,6 +93,36 @@ export interface CreateDocumentInput {
   isDefault?: boolean;
 }
 
+export interface CreateInterviewInput {
+  applicationId: string;
+  interviewType: string;
+  interviewerName?: string;
+  scheduledAt?: string;
+  durationMinutes?: number;
+  location?: string;
+  notes?: string;
+  questions?: string[];
+  rating?: number;
+  outcome?: string;
+}
+
+export interface ListInterviewsInput {
+  applicationId?: string;
+  limit?: number;
+}
+
+export interface UpdateInterviewInput {
+  interviewType?: string;
+  interviewerName?: string | null;
+  scheduledAt?: string | null;
+  durationMinutes?: number | null;
+  location?: string | null;
+  notes?: string | null;
+  questions?: string[] | null;
+  rating?: number | null;
+  outcome?: string | null;
+}
+
 export interface UploadDocumentResult {
   key: string;
   url: string;
@@ -115,6 +148,11 @@ export interface ApplicationOsRepository {
   listDocuments(userId: string): Promise<Document[]>;
   createDocument(userId: string, input: CreateDocumentInput): Promise<Document>;
   listFollowUps(userId: string): Promise<FollowUp[]>;
+  listInterviews(userId: string, input?: ListInterviewsInput): Promise<Interview[]>;
+  createInterview(userId: string, input: CreateInterviewInput): Promise<Interview>;
+  updateInterview(userId: string, interviewId: string, input: UpdateInterviewInput): Promise<Interview>;
+  deleteInterview(userId: string, interviewId: string): Promise<void>;
+  getDashboardSnapshot(userId: string): Promise<DashboardSnapshot>;
   createFollowUp(userId: string, input: CreateFollowUpInput): Promise<FollowUp>;
   updateFollowUpStatus(userId: string, input: UpdateFollowUpStatusInput): Promise<FollowUp>;
   getDashboardSnapshot(userId: string): Promise<DashboardSnapshot>;
@@ -306,6 +344,25 @@ class MockApplicationOsRepository implements ApplicationOsRepository {
   ];
 
   private readonly autoApplyRunLogs: AutoApplyRunLog[] = [];
+
+  private readonly interviews: Interview[] = [
+    {
+      id: "interview_1",
+      userId: "user_1",
+      applicationId: "app_1",
+      interviewType: "PHONE_SCREEN",
+      interviewerName: "Sarah from HR",
+      scheduledAt: isoDaysAgo(5),
+      durationMinutes: 30,
+      location: "Phone",
+      notes: "Discussed background and role expectations. Went well.",
+      questions: ["Tell me about yourself", "Why this company?"],
+      rating: 4,
+      outcome: "positive",
+      createdAt: isoDaysAgo(6),
+      updatedAt: isoDaysAgo(5),
+    },
+  ];
 
   async getCurrentUser(): Promise<User> {
     return this.user;
@@ -513,6 +570,70 @@ class MockApplicationOsRepository implements ApplicationOsRepository {
     }
     followUp.updatedAt = new Date().toISOString();
     return followUp;
+  }
+
+  async listInterviews(userId: string, input?: ListInterviewsInput): Promise<Interview[]> {
+    let results = this.interviews.filter((i) => i.userId === userId);
+    if (input?.applicationId) {
+      results = results.filter((i) => i.applicationId === input.applicationId);
+    }
+    const limit = input?.limit ?? 50;
+    return results.slice(0, limit);
+  }
+
+  async createInterview(userId: string, input: CreateInterviewInput): Promise<Interview> {
+    const application = this.applications.find(
+      (app) => app.id === input.applicationId && app.userId === userId,
+    );
+    if (!application) {
+      throw new Error("Application not found");
+    }
+
+    const interview: Interview = {
+      id: `interview_${Date.now()}`,
+      userId,
+      applicationId: input.applicationId,
+      interviewType: input.interviewType as InterviewType,
+      interviewerName: input.interviewerName,
+      scheduledAt: input.scheduledAt,
+      durationMinutes: input.durationMinutes,
+      location: input.location,
+      notes: input.notes,
+      questions: input.questions ?? [],
+      rating: input.rating,
+      outcome: input.outcome,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    };
+    this.interviews.push(interview);
+    return interview;
+  }
+
+  async updateInterview(userId: string, interviewId: string, input: UpdateInterviewInput): Promise<Interview> {
+    const idx = this.interviews.findIndex((i) => i.id === interviewId && i.userId === userId);
+    if (idx === -1) throw new Error("Interview not found");
+    const existing = this.interviews[idx];
+    const updated: Interview = {
+      ...existing,
+      interviewType: (input.interviewType ?? existing.interviewType) as InterviewType,
+      interviewerName: input.interviewerName !== undefined ? (input.interviewerName ?? undefined) : existing.interviewerName,
+      scheduledAt: input.scheduledAt !== undefined ? (input.scheduledAt ?? undefined) : existing.scheduledAt,
+      durationMinutes: input.durationMinutes !== undefined ? (input.durationMinutes ?? undefined) : existing.durationMinutes,
+      location: input.location !== undefined ? (input.location ?? undefined) : existing.location,
+      notes: input.notes !== undefined ? (input.notes ?? undefined) : existing.notes,
+      questions: input.questions !== undefined ? (input.questions ?? []) : existing.questions,
+      rating: input.rating !== undefined ? (input.rating ?? undefined) : existing.rating,
+      outcome: input.outcome !== undefined ? (input.outcome ?? undefined) : existing.outcome,
+      updatedAt: new Date().toISOString(),
+    };
+    this.interviews[idx] = updated;
+    return updated;
+  }
+
+  async deleteInterview(userId: string, interviewId: string): Promise<void> {
+    const idx = this.interviews.findIndex((i) => i.id === interviewId && i.userId === userId);
+    if (idx === -1) throw new Error("Interview not found");
+    this.interviews.splice(idx, 1);
   }
 
   async getDashboardSnapshot(userId: string): Promise<DashboardSnapshot> {
@@ -848,6 +969,76 @@ class PrismaApplicationOsRepository implements ApplicationOsRepository {
       completedAt: toIso(updated.completedAt),
       createdAt: updated.createdAt.toISOString(),
       updatedAt: updated.updatedAt.toISOString(),
+    };
+  }
+
+  async listInterviews(userId: string, input?: ListInterviewsInput): Promise<Interview[]> {
+    const interviews = await prisma.interview.findMany({
+      where: {
+        userId,
+        ...(input?.applicationId ? { applicationId: input.applicationId } : {}),
+      },
+      orderBy: { scheduledAt: "desc" },
+      take: input?.limit ?? 50,
+    });
+
+    return interviews.map((i) => ({
+      id: i.id,
+      userId: i.userId,
+      applicationId: i.applicationId,
+      interviewType: i.interviewType as InterviewType,
+      interviewerName: i.interviewerName ?? undefined,
+      scheduledAt: toIso(i.scheduledAt),
+      durationMinutes: i.durationMinutes ?? undefined,
+      location: i.location ?? undefined,
+      notes: i.notes ?? undefined,
+      questions: i.questions,
+      rating: i.rating ?? undefined,
+      outcome: i.outcome ?? undefined,
+      createdAt: i.createdAt.toISOString(),
+      updatedAt: i.updatedAt.toISOString(),
+    }));
+  }
+
+  async createInterview(userId: string, input: CreateInterviewInput): Promise<Interview> {
+    const application = await prisma.application.findFirst({
+      where: { id: input.applicationId, userId },
+    });
+    if (!application) {
+      throw new Error("Application not found");
+    }
+
+    const created = await prisma.interview.create({
+      data: {
+        userId,
+        applicationId: input.applicationId,
+        interviewType: input.interviewType as PrismaInterviewType,
+        interviewerName: input.interviewerName,
+        scheduledAt: input.scheduledAt ? new Date(input.scheduledAt) : null,
+        durationMinutes: input.durationMinutes,
+        location: input.location,
+        notes: input.notes,
+        questions: input.questions ?? [],
+        rating: input.rating,
+        outcome: input.outcome,
+      },
+    });
+
+    return {
+      id: created.id,
+      userId: created.userId,
+      applicationId: created.applicationId,
+      interviewType: created.interviewType as InterviewType,
+      interviewerName: created.interviewerName ?? undefined,
+      scheduledAt: toIso(created.scheduledAt),
+      durationMinutes: created.durationMinutes ?? undefined,
+      location: created.location ?? undefined,
+      notes: created.notes ?? undefined,
+      questions: created.questions,
+      rating: created.rating ?? undefined,
+      outcome: created.outcome ?? undefined,
+      createdAt: created.createdAt.toISOString(),
+      updatedAt: created.updatedAt.toISOString(),
     };
   }
 

@@ -50,6 +50,16 @@ enum AutoApplyFailureCategory {
   manual_handoff
 }
 
+enum InterviewType {
+  PHONE_SCREEN
+  TECHNICAL
+  BEHAVIORAL
+  SYSTEM_DESIGN
+  ONSITE
+  FINAL_ROUND
+  OTHER
+}
+
 model User {
   id                  String               @id @default(cuid())
   email               String               @unique
@@ -67,6 +77,30 @@ model User {
   followups           FollowUp[]
   passwordResetTokens PasswordResetToken[]
   autoApplyRunLogs    AutoApplyRunLog[]
+  interviews          Interview[]
+}
+
+model Interview {
+  id              String        @id @default(cuid())
+  userId          String
+  applicationId   String
+  interviewType   InterviewType
+  interviewerName String?
+  scheduledAt     DateTime?
+  durationMinutes Int?
+  location        String?
+  notes           String?
+  questions       String[]      @default([])
+  rating          Int?          // 1-5
+  outcome         String?       // positive / neutral / negative / pending
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+
+  user            User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  application     Application   @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+
+  @@index([userId, scheduledAt])
+  @@index([applicationId])
 }
 
 model Profile {

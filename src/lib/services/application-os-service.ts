@@ -16,6 +16,7 @@ import type {
   DashboardSnapshot,
   Document,
   FollowUp,
+  Interview,
   Job,
   Profile,
   User,
@@ -40,6 +41,19 @@ export interface ApplicationOsService {
   getFollowUps(userId: string): Promise<FollowUp[]>;
   createFollowUp(userId: string, input: CreateFollowUpInput): Promise<FollowUp>;
   updateFollowUpStatus(userId: string, input: UpdateFollowUpStatusInput): Promise<FollowUp>;
+  listInterviews(userId: string, applicationId?: string): Promise<Interview[]>;
+  createInterview(userId: string, input: {
+    applicationId: string;
+    interviewType: string;
+    interviewerName?: string;
+    scheduledAt?: string;
+    durationMinutes?: number;
+    location?: string;
+    notes?: string;
+    questions?: string[];
+    rating?: number;
+    outcome?: string;
+  }): Promise<Interview>;
 }
 
 class DefaultApplicationOsService implements ApplicationOsService {
@@ -106,6 +120,25 @@ class DefaultApplicationOsService implements ApplicationOsService {
 
   async updateFollowUpStatus(userId: string, input: UpdateFollowUpStatusInput): Promise<FollowUp> {
     return this.repository.updateFollowUpStatus(userId, input);
+  }
+
+  async listInterviews(userId: string, applicationId?: string): Promise<Interview[]> {
+    return this.repository.listInterviews(userId, applicationId ? { applicationId } : undefined);
+  }
+
+  async createInterview(userId: string, input: {
+    applicationId: string;
+    interviewType: string;
+    interviewerName?: string;
+    scheduledAt?: string;
+    durationMinutes?: number;
+    location?: string;
+    notes?: string;
+    questions?: string[];
+    rating?: number;
+    outcome?: string;
+  }): Promise<Interview> {
+    return this.repository.createInterview(userId, input);
   }
 }
 

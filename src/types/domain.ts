@@ -110,6 +110,32 @@ export type AutoApplyFailureCategory =
   | "no_form"
   | "manual_handoff";
 
+export type InterviewType =
+  | "PHONE_SCREEN"
+  | "TECHNICAL"
+  | "BEHAVIORAL"
+  | "SYSTEM_DESIGN"
+  | "ONSITE"
+  | "FINAL_ROUND"
+  | "OTHER";
+
+export interface Interview {
+  id: string;
+  userId: string;
+  applicationId: string;
+  interviewType: InterviewType;
+  interviewerName?: string;
+  scheduledAt?: ISODateString;
+  durationMinutes?: number;
+  location?: string;
+  notes?: string;
+  questions: string[];
+  rating?: number;
+  outcome?: string;
+  createdAt: ISODateString;
+  updatedAt: ISODateString;
+}
+
 export interface AutoApplyRunLog {
   id: string;
   userId: string;
