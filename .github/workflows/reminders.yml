@@ -1,0 +1,27 @@
+name: Reminders Cron
+
+# Run daily at 9am UTC
+on:
+  schedule:
+    - cron: "0 9 * * *"
+  workflow_dispatch:
+    inputs:
+      hours:
+        description: "Hours ahead for reminders"
+        required: false
+        default: "24"
+
+jobs:
+  send-reminders:
+    name: Send Reminders
+    runs-on: ubuntu-latest
+    if: ${{ vars.REMINDERS_ENABLED != 'false' }}
+    steps:
+      - name: Trigger reminders API
+        run: |
+          curl -s -X GET \
+            "${{ vars.APP_OS_URL }}/api/reminders?hours=${{ github.event.inputs.hours || '24' }}" \
+            -H "Authorization: Bearer ${{ secrets.REMINDERS_SECRET }}" \
+            | jq .
+        env:
+          REMINDERS_SECRET: ${{ secrets.REMINDERS_SECRET }}
