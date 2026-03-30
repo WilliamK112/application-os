@@ -16,6 +16,7 @@ import type {
   Application,
   ApplicationStatus,
   ApplicationWithJob,
+  ApplicationWithJobAndInterviews,
   AutoApplyFailureCategory,
   AutoApplyRunLog,
   AutoApplyRunStatus,
@@ -138,6 +139,7 @@ export interface ApplicationOsRepository {
   createJob(userId: string, input: CreateJobInput): Promise<Job>;
   updateJobStatus(userId: string, input: UpdateJobStatusInput): Promise<Job>;
   listApplications(userId: string): Promise<ApplicationWithJob[]>;
+  getApplication(userId: string, applicationId: string): Promise<ApplicationWithJobAndInterviews | null>;
   createApplication(userId: string, input: CreateApplicationInput): Promise<ApplicationWithJob>;
   updateApplicationStatus(
     userId: string,
@@ -410,6 +412,24 @@ class MockApplicationOsRepository implements ApplicationOsRepository {
       const job = this.jobs.find((item) => item.id === application.jobId);
       return job ? [{ application, job }] : [];
     });
+  }
+
+  async getApplication(userId: string, applicationId: string): Promise<ApplicationWithJobAndInterviews | null> {
+    const application = this.applications.find(
+      (item) => item.id === applicationId && item.userId === userId,
+    );
+    if (!application) return null;
+    const job = this.jobs.find((item) => item.id === application.jobId);
+    if (!job) return null;
+    const interviews = this.interviews
+      .filter((i) => i.applicationId === applicationId && i.userId === userId)
+      .sort((a, b) => {
+        if (!a.scheduledAt && !b.scheduledAt) return 0;
+        if (!a.scheduledAt) return 1;
+        if (!b.scheduledAt) return -1;
+        return new Date(b.scheduledAt).getTime() - new Date(a.scheduledAt).getTime();
+      });
+    return { application, job, interviews };
   }
 
   async createApplication(userId: string, input: CreateApplicationInput): Promise<ApplicationWithJob> {
@@ -743,6 +763,40 @@ class PrismaApplicationOsRepository implements ApplicationOsRepository {
       application: mapApplication(item),
       job: mapJob(item.job),
     }));
+  }
+
+  async getApplication(userId: string, applicationId: string): Promise<ApplicationWithJobAndInterviews | null> {
+    const application = await prisma.application.findFirst({
+      where: { id: applicationId, userId },
+      include: { job: true },
+    });
+    if (!application) return null;
+
+    const interviews = await prisma.interview.findMany({
+      where: { applicationId, userId },
+      orderBy: { scheduledAt: "desc" },
+    });
+
+    return {
+      application: mapApplication(application),
+      job: mapJob(application.job),
+      interviews: interviews.map((i) => ({
+        id: i.id,
+        userId: i.userId,
+        applicationId: i.applicationId,
+        interviewType: i.interviewType as InterviewType,
+        interviewerName: i.interviewerName ?? undefined,
+        scheduledAt: toIso(i.scheduledAt),
+        durationMinutes: i.durationMinutes ?? undefined,
+        location: i.location ?? undefined,
+        notes: i.notes ?? undefined,
+        questions: i.questions as string[],
+        rating: i.rating ?? undefined,
+        outcome: i.outcome ?? undefined,
+        createdAt: i.createdAt.toISOString(),
+        updatedAt: i.updatedAt.toISOString(),
+      })),
+    };
   }
 
   async createApplication(userId: string, input: CreateApplicationInput): Promise<ApplicationWithJob> {

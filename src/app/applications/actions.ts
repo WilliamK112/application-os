@@ -101,3 +101,8 @@ export async function updateApplicationStatusAction(formData: FormData): Promise
   safeRevalidatePath("/applications");
   safeRevalidatePath("/dashboard");
 }
+
+export async function getApplicationAction(applicationId: string) {
+  const user = await authSession.getCurrentUserOrThrow();
+  return applicationOsService.getApplication(user.id, applicationId);
+}

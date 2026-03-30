@@ -154,3 +154,7 @@ export interface ApplicationWithJob {
   application: Application;
   job: Job;
 }
+
+export interface ApplicationWithJobAndInterviews extends ApplicationWithJob {
+  interviews: Interview[];
+}

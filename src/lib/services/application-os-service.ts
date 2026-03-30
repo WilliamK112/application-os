@@ -12,6 +12,7 @@ import {
 } from "@/lib/repositories/application-os-repository";
 import type {
   ApplicationWithJob,
+  ApplicationWithJobAndInterviews,
   AutoApplyRunLog,
   DashboardSnapshot,
   Document,
@@ -30,6 +31,7 @@ export interface ApplicationOsService {
   createJob(userId: string, input: CreateJobInput): Promise<Job>;
   updateJobStatus(userId: string, input: UpdateJobStatusInput): Promise<Job>;
   getApplications(userId: string): Promise<ApplicationWithJob[]>;
+  getApplication(userId: string, applicationId: string): Promise<ApplicationWithJobAndInterviews | null>;
   createApplication(userId: string, input: CreateApplicationInput): Promise<ApplicationWithJob>;
   updateApplicationStatus(
     userId: string,
@@ -97,6 +99,10 @@ class DefaultApplicationOsService implements ApplicationOsService {
 
   async getApplications(userId: string): Promise<ApplicationWithJob[]> {
     return this.repository.listApplications(userId);
+  }
+
+  async getApplication(userId: string, applicationId: string): Promise<ApplicationWithJobAndInterviews | null> {
+    return this.repository.getApplication(userId, applicationId);
   }
 
   async createApplication(userId: string, input: CreateApplicationInput): Promise<ApplicationWithJob> {

@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useCallback } from "react";
 import {
@@ -102,7 +103,9 @@ export function ApplicationsClient({ rows }: { rows: ApplicationWithJob[] }) {
             <article key={application.id} className="rounded-lg border border-slate-200 bg-white p-4">
               <div className="flex flex-wrap items-center justify-between gap-2">
                 <h3 className="text-lg font-semibold">
-                  {job.company} · {job.title}
+                  <Link href={`/applications/${application.id}`} className="hover:text-blue-600">
+                    {job.company} · {job.title}
+                  </Link>
                 </h3>
                 <form action={updateApplicationStatusAction}>
                   <input type="hidden" name="applicationId" value={application.id} />

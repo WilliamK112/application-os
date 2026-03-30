@@ -12,7 +12,15 @@ const navItems = [
   { href: "/settings", label: "Settings" },
 ];
 
-export function AppShell({ title, children }: { title: string; children: ReactNode }) {
+export function AppShell({
+  title,
+  children,
+  backHref,
+}: {
+  title: string;
+  children: ReactNode;
+  backHref?: string;
+}) {
   return (
     <div className="min-h-screen bg-slate-50 text-slate-900">
       <div className="mx-auto grid min-h-screen w-full max-w-7xl grid-cols-1 md:grid-cols-[220px_1fr]">
@@ -36,6 +44,14 @@ export function AppShell({ title, children }: { title: string; children: ReactNo
 
         <main className="p-6">
           <header className="mb-6 border-b border-slate-200 pb-4">
+            {backHref && (
+              <Link
+                href={backHref}
+                className="mb-2 block text-sm text-slate-500 hover:text-slate-700"
+              >
+                ← Back
+              </Link>
+            )}
             <h2 className="text-2xl font-semibold">{title}</h2>
           </header>
           {children}
