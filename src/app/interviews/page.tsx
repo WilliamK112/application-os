@@ -4,7 +4,12 @@ import { getCurrentUserOrThrow } from "@/lib/auth/session";
 import { applicationOsService } from "@/lib/services/application-os-service";
 import { InterviewsClient } from "./interviews-client";
 
-export default async function InterviewsPage() {
+interface InterviewsPageProps {
+  searchParams: Promise<{ applicationId?: string }>;
+}
+
+export default async function InterviewsPage({ searchParams }: InterviewsPageProps) {
+  const { applicationId } = await searchParams;
   const user = await getCurrentUserOrThrow();
   const [interviews, applications] = await Promise.all([
     applicationOsService.listInterviews(user.id),
@@ -21,7 +26,11 @@ export default async function InterviewsPage() {
   return (
     <AppShell title="Interviews">
       <Suspense fallback={<div className="text-sm text-slate-500 p-4">Loading...</div>}>
-        <InterviewsClient interviews={interviews} applicationMap={applicationMap} />
+        <InterviewsClient
+          interviews={interviews}
+          applicationMap={applicationMap}
+          defaultApplicationId={applicationId}
+        />
       </Suspense>
     </AppShell>
   );

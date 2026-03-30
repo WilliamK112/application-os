@@ -6,9 +6,17 @@ import type { Interview } from "@/types/domain";
 export function InterviewsClient({
   interviews,
   applicationMap,
+  defaultApplicationId,
 }: {
   interviews: Interview[];
   applicationMap: Record<string, string>;
+  defaultApplicationId?: string;
 }) {
-  return <InterviewList interviews={interviews} applicationMap={applicationMap} />;
+  return (
+    <InterviewList
+      interviews={interviews}
+      applicationMap={applicationMap}
+      defaultApplicationId={defaultApplicationId}
+    />
+  );
 }

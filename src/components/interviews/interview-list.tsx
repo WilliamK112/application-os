@@ -276,11 +276,13 @@ function InterviewCard({
 export function InterviewList({
   interviews,
   applicationMap,
+  defaultApplicationId,
 }: {
   interviews: Interview[];
   applicationMap: Record<string, string>;
+  defaultApplicationId?: string;
 }) {
-  const [showCreate, setShowCreate] = useState(false);
+  const [showCreate, setShowCreate] = useState(!!defaultApplicationId);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [state, formAction, isPending] = useActionState(createInterviewAction, {
     error: "",
@@ -322,6 +324,7 @@ export function InterviewList({
                 <select
                   name="applicationId"
                   required
+                  defaultValue={defaultApplicationId ?? ""}
                   className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm"
                 >
                   <option value="">Select application...</option>
