@@ -16,13 +16,7 @@ const STATUS_META: Record<AutoApplyQueueStatus, { label: string; color: string }
   FAILED: { label: "Failed", color: "bg-red-100 text-red-700" },
 };
 
-function QueueItemRow({
-  item,
-  onRemove,
-}: {
-  item: AutoApplyQueueItem;
-  onRemove: (id: string) => void;
-}) {
+function QueueItemRow({ item }: { item: AutoApplyQueueItem }) {
   const meta = STATUS_META[item.status];
   return (
     <tr className="border-b border-slate-100">
@@ -62,13 +56,7 @@ function QueueItemRow({
           </a>
         )}
         {(item.status === "PENDING" || item.status === "FAILED") && (
-          <button
-            onClick={() => onRemove(item.id)}
-            className="rounded text-slate-400 hover:text-red-500"
-            title="Remove from queue"
-          >
-            ✕
-          </button>
+          <RemoveButton itemId={item.id} />
         )}
       </td>
     </tr>
@@ -244,16 +232,7 @@ export function QueueClient({
             </thead>
             <tbody>
               {initialQueue.map((item) => (
-                <QueueItemRow
-                  key={item.id}
-                  item={item}
-                  onRemove={() => {
-                    // Trigger revalidation by removing via action
-                    const formData = new FormData();
-                    formData.append("queueItemIds", item.id);
-                    removeFromQueueAction(null, formData);
-                  }}
-                />
+                <QueueItemRow key={item.id} item={item} />
               ))}
             </tbody>
           </table>
