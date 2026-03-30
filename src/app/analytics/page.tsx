@@ -58,6 +58,7 @@ export default async function AnalyticsPage() {
 
   return (
     <AppShell title="Analytics">
+      <div className="min-w-0 overflow-x-auto px-2 sm:px-0">
       {/* Conversion metrics */}
       <section className="grid gap-4 sm:grid-cols-3 xl:grid-cols-4">
         {[
@@ -75,7 +76,7 @@ export default async function AnalyticsPage() {
       {/* Application funnel */}
       <section className="mt-6 rounded-lg border border-slate-200 bg-white p-4">
         <h3 className="text-lg font-semibold">Application Funnel</h3>
-        <div className="mt-4 space-y-2">
+        <div className="mt-4 space-y-2 overflow-x-auto">
           {[
             { label: "Total", count: funnel.total, width: 100, color: "bg-slate-400" },
             { label: "Applied", count: funnel.applied, width: funnel.total > 0 ? Math.round((funnel.applied / funnel.total) * 100) : 0, color: "bg-blue-400" },
@@ -84,15 +85,15 @@ export default async function AnalyticsPage() {
             { label: "Offer", count: funnel.offer, width: funnel.total > 0 ? Math.round((funnel.offer / funnel.total) * 100) : 0, color: "bg-green-400" },
             { label: "Rejected", count: funnel.rejected, width: funnel.total > 0 ? Math.round((funnel.rejected / funnel.total) * 100) : 0, color: "bg-red-300" },
           ].map(({ label, count, width, color }) => (
-            <div key={label} className="flex items-center gap-3 text-sm">
-              <span className="w-24 text-slate-600">{label}</span>
-              <div className="flex-1 rounded-full bg-slate-100">
+            <div key={label} className="flex items-center gap-2 text-sm min-w-[280px]">
+              <span className="w-20 shrink-0 text-slate-600 truncate sm:w-24">{label}</span>
+              <div className="min-w-0 flex-1 rounded-full bg-slate-100">
                 <div
                   className={`h-5 rounded-full ${color}`}
                   style={{ width: `${Math.max(width, count > 0 ? 2 : 0)}%` }}
                 />
               </div>
-              <span className="w-8 text-right font-medium">{count}</span>
+              <span className="w-8 shrink-0 text-right font-medium">{count}</span>
             </div>
           ))}
         </div>
@@ -175,6 +176,7 @@ export default async function AnalyticsPage() {
               ))}
           </div>
         </section>
+      </div>
       </div>
     </AppShell>
   );
