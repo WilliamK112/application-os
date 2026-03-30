@@ -7,6 +7,7 @@ test("JobsPage redirects to /login when user is unauthenticated", async () => {
   const originalGetCurrentUserOrThrow = jobsPageAuth.getCurrentUserOrThrow;
   const originalGetJobs = applicationOsService.getJobs.bind(applicationOsService);
   const originalGetAutoApplyRunLogs = applicationOsService.getAutoApplyRunLogs.bind(applicationOsService);
+  const originalListCompanies = applicationOsService.listCompanies.bind(applicationOsService);
 
   try {
     jobsPageAuth.getCurrentUserOrThrow = async () => {
@@ -15,6 +16,7 @@ test("JobsPage redirects to /login when user is unauthenticated", async () => {
 
     let getJobsCalled = false;
     let getAutoApplyRunLogsCalled = false;
+    let listCompaniesCalled = false;
 
     applicationOsService.getJobs = async () => {
       getJobsCalled = true;
@@ -26,13 +28,20 @@ test("JobsPage redirects to /login when user is unauthenticated", async () => {
       throw new Error("should not be called");
     };
 
+    applicationOsService.listCompanies = async () => {
+      listCompaniesCalled = true;
+      throw new Error("should not be called");
+    };
+
     await assert.rejects(() => JobsPage(), /NEXT_REDIRECT/);
     assert.equal(getJobsCalled, false);
     assert.equal(getAutoApplyRunLogsCalled, false);
+    assert.equal(listCompaniesCalled, false);
   } finally {
     jobsPageAuth.getCurrentUserOrThrow = originalGetCurrentUserOrThrow;
     applicationOsService.getJobs = originalGetJobs;
     applicationOsService.getAutoApplyRunLogs = originalGetAutoApplyRunLogs;
+    applicationOsService.listCompanies = originalListCompanies;
   }
 });
 
@@ -40,6 +49,7 @@ test("JobsPage loads user-scoped data and renders both provider checklists", asy
   const originalGetCurrentUserOrThrow = jobsPageAuth.getCurrentUserOrThrow;
   const originalGetJobs = applicationOsService.getJobs.bind(applicationOsService);
   const originalGetAutoApplyRunLogs = applicationOsService.getAutoApplyRunLogs.bind(applicationOsService);
+  const originalListCompanies = applicationOsService.listCompanies.bind(applicationOsService);
   const originalGetProviderSubmitChecklist = jobsPageChecklist.getProviderSubmitChecklist;
 
   try {
@@ -47,6 +57,7 @@ test("JobsPage loads user-scoped data and renders both provider checklists", asy
 
     let getJobsUserId: string | null = null;
     let getHistoryUserId: string | null = null;
+    let listCompaniesUserId: string | null = null;
     const checklistProviders: string[] = [];
 
     applicationOsService.getJobs = async (userId: string) => {
@@ -56,6 +67,11 @@ test("JobsPage loads user-scoped data and renders both provider checklists", asy
 
     applicationOsService.getAutoApplyRunLogs = async (userId: string) => {
       getHistoryUserId = userId;
+      return [];
+    };
+
+    applicationOsService.listCompanies = async (userId: string) => {
+      listCompaniesUserId = userId;
       return [];
     };
 
@@ -72,11 +88,13 @@ test("JobsPage loads user-scoped data and renders both provider checklists", asy
 
     assert.equal(getJobsUserId, "user-123");
     assert.equal(getHistoryUserId, "user-123");
+    assert.equal(listCompaniesUserId, "user-123");
     assert.deepEqual(checklistProviders, ["greenhouse", "lever"]);
   } finally {
     jobsPageAuth.getCurrentUserOrThrow = originalGetCurrentUserOrThrow;
     applicationOsService.getJobs = originalGetJobs;
     applicationOsService.getAutoApplyRunLogs = originalGetAutoApplyRunLogs;
+    applicationOsService.listCompanies = originalListCompanies;
     jobsPageChecklist.getProviderSubmitChecklist = originalGetProviderSubmitChecklist;
   }
 });

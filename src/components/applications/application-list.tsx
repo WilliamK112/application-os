@@ -96,14 +96,32 @@ export function ApplicationList({ rows }: { rows: ApplicationWithJob[] }) {
             No applications match your filters.
           </div>
         ) : (
-          paginated.items.map(({ application, job }) => (
+          paginated.items.map(({ application, job, interviewSummary }) => (
             <article key={application.id} className="rounded-lg border border-slate-200 bg-white p-4">
               <div className="flex flex-wrap items-start justify-between gap-2">
-                <h3 className="text-lg font-semibold">
-                  <Link href={`/applications/${application.id}`} className="hover:text-blue-600">
-                    {job.company} · {job.title}
-                  </Link>
-                </h3>
+                <div>
+                  <h3 className="text-lg font-semibold">
+                    <Link href={`/applications/${application.id}`} className="hover:text-blue-600">
+                      {job.company} · {job.title}
+                    </Link>
+                  </h3>
+                  {interviewSummary && (
+                    <div className="mt-1 flex flex-wrap items-center gap-2">
+                      {interviewSummary.avgRating != null && (
+                        <span className="text-sm text-amber-600">
+                          {"★".repeat(Math.round(interviewSummary.avgRating))}
+                          {interviewSummary.avgRating % 1 >= 0.5 ? "½" : ""}
+                          <span className="text-slate-400">
+                            ({interviewSummary.avgRating.toFixed(1)})
+                          </span>
+                        </span>
+                      )}
+                      <span className="text-xs text-slate-400">
+                        {interviewSummary.count} interview{interviewSummary.count !== 1 ? "s" : ""}
+                      </span>
+                    </div>
+                  )}
+                </div>
                 <form action={updateApplicationStatusAction}>
                   <input type="hidden" name="applicationId" value={application.id} />
                   <select

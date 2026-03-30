@@ -22,9 +22,10 @@ export const jobsPageChecklist = {
 
 export default async function JobsPage() {
   const user = await jobsPageAuth.getCurrentUserOrThrow();
-  const [jobs, autoApplyHistory] = await Promise.all([
+  const [jobs, autoApplyHistory, companies] = await Promise.all([
     applicationOsService.getJobs(user.id),
     applicationOsService.getAutoApplyRunLogs(user.id, { limit: 40 }),
+    applicationOsService.listCompanies(user.id),
   ]);
 
   const submitChecklists = [
@@ -44,7 +45,27 @@ export default async function JobsPage() {
               required
               className="w-full rounded-md border border-slate-300 px-3 py-2"
               placeholder="Acme AI"
+              list="company-suggestions"
             />
+            <datalist id="company-suggestions">
+              {companies.map((c) => (
+                <option key={c.id} value={c.name} />
+              ))}
+            </datalist>
+          </label>
+          <label className="text-sm">
+            <span className="mb-1 block text-slate-600">Link to Company</span>
+            <select
+              name="companyId"
+              className="w-full rounded-md border border-slate-300 px-3 py-2"
+            >
+              <option value="">— None —</option>
+              {companies.map((c) => (
+                <option key={c.id} value={c.id}>
+                  {c.name}
+                </option>
+              ))}
+            </select>
           </label>
           <label className="text-sm">
             <span className="mb-1 block text-slate-600">Title</span>
@@ -71,7 +92,7 @@ export default async function JobsPage() {
               placeholder="LinkedIn"
             />
           </label>
-          <label className="text-sm sm:col-span-2">
+          <label className="text-sm">
             <span className="mb-1 block text-slate-600">Status</span>
             <select
               name="status"
@@ -147,7 +168,7 @@ export default async function JobsPage() {
       />
 
       <Suspense fallback={<div className="text-sm text-slate-500 p-4">Loading jobs...</div>}>
-        <JobsClient jobs={jobs} />
+        <JobsClient jobs={jobs} companies={companies} />
       </Suspense>
     </AppShell>
   );

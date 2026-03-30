@@ -42,6 +42,7 @@ export interface CreateJobInput {
   status?: JobStatus;
   url?: string;
   notes?: string;
+  companyId?: string;
 }
 
 export interface CreateCompanyInput {
@@ -403,6 +404,7 @@ class MockApplicationOsRepository implements ApplicationOsRepository {
       status: input.status ?? "SAVED",
       url: input.url,
       notes: input.notes,
+      companyId: input.companyId,
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
     };
@@ -425,7 +427,36 @@ class MockApplicationOsRepository implements ApplicationOsRepository {
     const apps = this.applications.filter((application) => application.userId === userId);
     return apps.flatMap((application) => {
       const job = this.jobs.find((item) => item.id === application.jobId);
-      return job ? [{ application, job }] : [];
+      if (!job) return [];
+
+      const appInterviews = this.interviews.filter(
+        (i) => i.applicationId === application.id && i.userId === userId,
+      );
+
+      const rated = appInterviews.filter((i) => i.rating != null);
+
+      // Latest interview date (most recent scheduledAt)
+      const latestDateStr = appInterviews
+        .map((i) => i.scheduledAt)
+        .filter((d): d is string => !!d)
+        .sort((a, b) => new Date(b).getTime() - new Date(a).getTime())[0];
+
+      const interviewSummary: InterviewSummary = {
+        count: appInterviews.length,
+        avgRating:
+          rated.length > 0
+            ? rated.reduce((sum, i) => sum + (i.rating ?? 0), 0) / rated.length
+            : undefined,
+        latestInterviewDate: latestDateStr,
+      };
+
+      return [
+        {
+          application,
+          job,
+          interviewSummary: appInterviews.length > 0 ? interviewSummary : undefined,
+        },
+      ];
     });
   }
 
@@ -778,6 +809,7 @@ class PrismaApplicationOsRepository implements ApplicationOsRepository {
         status: (input.status ?? "SAVED") as PrismaJobStatus,
         url: input.url,
         notes: input.notes,
+        companyId: input.companyId,
       },
     });
 
@@ -803,16 +835,49 @@ class PrismaApplicationOsRepository implements ApplicationOsRepository {
   }
 
   async listApplications(userId: string): Promise<ApplicationWithJob[]> {
-    const applications = await prisma.application.findMany({
-      where: { userId },
-      include: { job: true },
-      orderBy: { updatedAt: "desc" },
-    });
+    const [applications, allInterviews] = await Promise.all([
+      prisma.application.findMany({
+        where: { userId },
+        include: { job: true },
+        orderBy: { updatedAt: "desc" },
+      }),
+      prisma.interview.findMany({
+        where: { userId },
+        select: { id: true, applicationId: true, rating: true, scheduledAt: true },
+      }),
+    ]);
 
-    return applications.map((item) => ({
-      application: mapApplication(item),
-      job: mapJob(item.job),
-    }));
+    const interviewsByApp = new Map<string, typeof allInterviews>();
+    for (const i of allInterviews) {
+      if (!interviewsByApp.has(i.applicationId)) interviewsByApp.set(i.applicationId, []);
+      interviewsByApp.get(i.applicationId)!.push(i);
+    }
+
+    return applications.map((item) => {
+      const appInterviews = interviewsByApp.get(item.id) ?? [];
+      const rated = appInterviews.filter((i) => i.rating != null);
+
+      // Latest interview date (most recent scheduledAt)
+      const latestDateStr = appInterviews
+        .map((i) => i.scheduledAt)
+        .filter((d): d is Date => !!d)
+        .sort((a, b) => b.getTime() - a.getTime())[0];
+
+      const interviewSummary: InterviewSummary = {
+        count: appInterviews.length,
+        avgRating:
+          rated.length > 0
+            ? rated.reduce((sum, i) => sum + (i.rating ?? 0), 0) / rated.length
+            : undefined,
+        latestInterviewDate: latestDateStr ? latestDateStr.toISOString() : undefined,
+      };
+
+      return {
+        application: mapApplication(item),
+        job: mapJob(item.job),
+        interviewSummary: appInterviews.length > 0 ? interviewSummary : undefined,
+      };
+    });
   }
 
   async getApplication(userId: string, applicationId: string): Promise<ApplicationWithJobAndInterviews | null> {

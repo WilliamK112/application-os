@@ -1,15 +1,17 @@
 "use client";
 
+import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useCallback } from "react";
 import { filterJobs, sortJobs, paginateJobs } from "@/lib/jobs/filters";
 import { JOB_STATUS_OPTIONS } from "@/lib/constants/status";
 import { updateJobStatusAction } from "./actions";
-import type { Job } from "@/types/domain";
+import type { Company, Job } from "@/types/domain";
 
-export function JobsClient({ jobs }: { jobs: Job[] }) {
+export function JobsClient({ jobs, companies }: { jobs: Job[]; companies: Company[] }) {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const companyMap = Object.fromEntries(companies.map((c) => [c.id, c]));
 
   const search = searchParams.get("search") ?? "";
   const status = searchParams.get("status") ?? "";
@@ -103,7 +105,18 @@ export function JobsClient({ jobs }: { jobs: Job[] }) {
             ) : (
               paginated.items.map((job) => (
                 <tr key={job.id} className="border-b last:border-b-0">
-                  <td className="px-4 py-3 font-medium">{job.company}</td>
+                  <td className="px-4 py-3">
+                    <span className="font-medium">{job.company}</span>
+                    {job.companyId && companyMap[job.companyId] && (
+                      <Link
+                        href={`/companies/${job.companyId}`}
+                        className="ml-2 inline-flex items-center gap-1 rounded bg-slate-100 px-1.5 py-0.5 text-xs text-slate-600 hover:bg-slate-200"
+                        title={companyMap[job.companyId].name}
+                      >
+                        🏢
+                      </Link>
+                    )}
+                  </td>
                   <td className="px-4 py-3">{job.title}</td>
                   <td className="px-4 py-3">{job.location ?? "-"}</td>
                   <td className="px-4 py-3">

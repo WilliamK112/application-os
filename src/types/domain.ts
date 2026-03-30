@@ -164,9 +164,16 @@ export interface AutoApplyRunLog {
   job: Pick<Job, "id" | "company" | "title">;
 }
 
+export interface InterviewSummary {
+  count: number;
+  avgRating?: number;
+  latestInterviewDate?: ISODateString;
+}
+
 export interface ApplicationWithJob {
   application: Application;
   job: Job;
+  interviewSummary?: InterviewSummary;
 }
 
 export interface ApplicationWithJobAndInterviews extends ApplicationWithJob {
