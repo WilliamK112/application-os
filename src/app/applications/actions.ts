@@ -27,6 +27,15 @@ const bulkUpdateApplicationStatusSchema = z.object({
   status: z.enum(APPLICATION_STATUS_OPTIONS),
 });
 
+const CHANNEL_OPTIONS = ["Email", "Phone", "LinkedIn", "In-person", "Other"] as const;
+
+const bulkCreateFollowUpsSchema = z.object({
+  applicationIds: z.string().min(1).transform(s => s.split(",").filter(Boolean)),
+  dueAt: z.string().trim().min(1, "Due date is required"),
+  channel: z.enum(CHANNEL_OPTIONS).optional(),
+  content: z.string().trim().max(500).optional(),
+});
+
 function safeRevalidatePath(path: string): void {
   try {
     revalidatePath(path);
@@ -125,4 +134,57 @@ export async function bulkUpdateApplicationStatusAction(
 export async function getApplicationAction(applicationId: string) {
   const user = await authSession.getCurrentUserOrThrow();
   return applicationOsService.getApplication(user.id, applicationId);
+}
+
+export type BulkCreateFollowUpsActionState = {
+  error: string;
+  success: boolean;
+};
+
+export async function bulkCreateFollowUpsAction(
+  _prevState: BulkCreateFollowUpsActionState,
+  formData: FormData,
+): Promise<BulkCreateFollowUpsActionState> {
+  const user = await authSession.getCurrentUserOrThrow();
+
+  const parsed = bulkCreateFollowUpsSchema.safeParse({
+    applicationIds: String(formData.get("applicationIds") ?? ""),
+    dueAt: String(formData.get("dueAt") ?? ""),
+    channel: formData.get("channel") || undefined,
+    content: formData.get("content") || undefined,
+  });
+
+  if (!parsed.success) {
+    return { error: parsed.error.issues[0]?.message ?? "Invalid input", success: false };
+  }
+
+  const rawDueAt = parsed.data.dueAt.trim();
+  const dueAtDate = new Date(rawDueAt);
+  if (Number.isNaN(dueAtDate.getTime())) {
+    return { error: "Due date is invalid.", success: false };
+  }
+
+  const dueAtIso = dueAtDate.toISOString();
+
+  try {
+    await Promise.all(
+      parsed.data.applicationIds.map((applicationId) =>
+        applicationOsService.createFollowUp(user.id, {
+          applicationId,
+          dueAt: dueAtIso,
+          channel: parsed.data.channel,
+          content: parsed.data.content,
+        }),
+      ),
+    );
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "Unable to create follow-ups";
+    return { error: message, success: false };
+  }
+
+  safeRevalidatePath("/applications");
+  safeRevalidatePath("/followups");
+  safeRevalidatePath("/dashboard");
+
+  return { error: "", success: true };
 }

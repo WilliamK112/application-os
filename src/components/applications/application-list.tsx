@@ -2,14 +2,18 @@
 
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { useCallback, useState } from "react";
+import { useActionState, useCallback, useEffect, useState } from "react";
 import {
   filterApplications,
   sortApplications,
   paginateApplications,
 } from "@/lib/jobs/filters";
 import { APPLICATION_STATUS_OPTIONS } from "@/lib/constants/status";
-import { updateApplicationStatusAction, bulkUpdateApplicationStatusAction } from "@/app/applications/actions";
+import {
+  updateApplicationStatusAction,
+  bulkUpdateApplicationStatusAction,
+  bulkCreateFollowUpsAction,
+} from "@/app/applications/actions";
 import type { ApplicationWithJob } from "@/types/domain";
 
 export function ApplicationList({ rows }: { rows: ApplicationWithJob[] }) {
@@ -18,6 +22,19 @@ export function ApplicationList({ rows }: { rows: ApplicationWithJob[] }) {
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [bulkStatus, setBulkStatus] = useState<string>("");
   const [bulkPending, setBulkPending] = useState(false);
+  const [showBulkFollowUp, setShowBulkFollowUp] = useState(false);
+
+  const [bulkFollowUpState, formAction, isBulkFollowUpPending] = useActionState(
+    bulkCreateFollowUpsAction,
+    { error: "", success: false },
+  );
+
+  useEffect(() => {
+    if (bulkFollowUpState.success) {
+      setSelectedIds(new Set());
+      setShowBulkFollowUp(false);
+    }
+  }, [bulkFollowUpState.success]);
 
   const search = searchParams.get("search") ?? "";
   const status = searchParams.get("status") ?? "";
@@ -128,12 +145,94 @@ export function ApplicationList({ rows }: { rows: ApplicationWithJob[] }) {
             {bulkPending ? "Applying..." : "Apply"}
           </button>
           <button
-            onClick={() => { setSelectedIds(new Set()); setBulkStatus(""); }}
+            onClick={() => setShowBulkFollowUp((v) => !v)}
+            className="rounded border border-slate-300 px-3 py-1 text-sm font-medium text-slate-700 hover:bg-slate-50"
+          >
+            📅 Create Follow-up
+          </button>
+          <button
+            onClick={() => { setSelectedIds(new Set()); setBulkStatus(""); setShowBulkFollowUp(false); }}
             className="text-sm text-slate-500 hover:text-slate-700"
           >
             Clear
           </button>
         </div>
+      )}
+
+      {/* Bulk Follow-up inline form */}
+      {selectedIds.size > 0 && showBulkFollowUp && (
+        <form
+          action={formAction}
+          className="mb-4 flex flex-wrap items-end gap-3 rounded-lg border border-blue-200 bg-blue-50 p-4"
+        >
+          <input type="hidden" name="applicationIds" value={Array.from(selectedIds).join(",")} />
+          <div>
+            <label htmlFor="bulk-dueAt" className="block text-xs font-medium text-slate-600">
+              Due Date
+            </label>
+            <input
+              type="datetime-local"
+              id="bulk-dueAt"
+              name="dueAt"
+              required
+              className="mt-1 rounded-md border border-slate-300 px-2 py-1 text-sm"
+            />
+          </div>
+          <div>
+            <label htmlFor="bulk-channel" className="block text-xs font-medium text-slate-600">
+              Channel
+            </label>
+            <select
+              id="bulk-channel"
+              name="channel"
+              className="mt-1 rounded-md border border-slate-300 px-2 py-1 text-sm"
+            >
+              <option value="">Select...</option>
+              <option value="Email">Email</option>
+              <option value="Phone">Phone</option>
+              <option value="LinkedIn">LinkedIn</option>
+              <option value="In-person">In-person</option>
+              <option value="Other">Other</option>
+            </select>
+          </div>
+          <div className="flex-1 min-w-[200px]">
+            <label htmlFor="bulk-content" className="block text-xs font-medium text-slate-600">
+              Action / Note
+            </label>
+            <input
+              type="text"
+              id="bulk-content"
+              name="content"
+              placeholder="e.g. Follow up on application status"
+              maxLength={500}
+              className="mt-1 w-full rounded-md border border-slate-300 px-2 py-1 text-sm"
+            />
+          </div>
+          {bulkFollowUpState.error && (
+            <p className="w-full text-sm text-red-600">{bulkFollowUpState.error}</p>
+          )}
+          {bulkFollowUpState.success && (
+            <p className="w-full text-sm text-green-600">
+              ✅ Follow-ups created for {selectedIds.size} application(s)
+            </p>
+          )}
+          <div className="flex gap-2">
+            <button
+              type="submit"
+              disabled={isBulkFollowUpPending}
+              className="rounded bg-blue-600 px-4 py-1 text-sm font-medium text-white disabled:opacity-50"
+            >
+              {isBulkFollowUpPending ? "Creating..." : `Create for ${selectedIds.size} App(s)`}
+            </button>
+            <button
+              type="button"
+              onClick={() => setShowBulkFollowUp(false)}
+              className="rounded border border-slate-300 px-3 py-1 text-sm text-slate-600"
+            >
+              Cancel
+            </button>
+          </div>
+        </form>
       )}
 
       {/* Card list */}
