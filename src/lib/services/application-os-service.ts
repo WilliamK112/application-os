@@ -14,6 +14,8 @@ import {
 import type {
   ApplicationWithJob,
   ApplicationWithJobAndInterviews,
+  AutoApplyQueueItem,
+  AutoApplyQueueStatus,
   AutoApplyRunLog,
   Company,
   CompanyWithStats,
@@ -43,6 +45,16 @@ export interface ApplicationOsService {
   ): Promise<ApplicationWithJob>;
   createAutoApplyRunLogs(userId: string, input: CreateAutoApplyRunLogInput[]): Promise<void>;
   getAutoApplyRunLogs(userId: string, input?: ListAutoApplyRunLogsInput): Promise<AutoApplyRunLog[]>;
+  // Auto-Apply Queue
+  addJobsToAutoApplyQueue(userId: string, jobIds: string[], provider?: string): Promise<AutoApplyQueueItem[]>;
+  getAutoApplyQueue(userId: string): Promise<AutoApplyQueueItem[]>;
+  updateQueueItemStatus(
+    userId: string,
+    queueItemId: string,
+    input: { status?: AutoApplyQueueStatus; runLogId?: string; applicationId?: string; errorMessage?: string; verificationToken?: string },
+  ): Promise<AutoApplyQueueItem>;
+  removeFromQueue(userId: string, queueItemIds: string[]): Promise<void>;
+  getQueueItemByVerificationToken(token: string): Promise<AutoApplyQueueItem | null>;
   getDocuments(userId: string): Promise<Document[]>;
   getFollowUps(userId: string): Promise<FollowUp[]>;
   createFollowUp(userId: string, input: CreateFollowUpInput): Promise<FollowUp>;
@@ -139,6 +151,42 @@ class DefaultApplicationOsService implements ApplicationOsService {
 
   async getAutoApplyRunLogs(userId: string, input?: ListAutoApplyRunLogsInput): Promise<AutoApplyRunLog[]> {
     return this.repository.listAutoApplyRunLogs(userId, input);
+  }
+
+  // ── Auto-Apply Queue ───────────────────────────────────────────────
+
+  async addJobsToAutoApplyQueue(
+    userId: string,
+    jobIds: string[],
+    provider?: string,
+  ): Promise<AutoApplyQueueItem[]> {
+    return this.repository.createAutoApplyQueueItems(userId, jobIds, provider);
+  }
+
+  async getAutoApplyQueue(userId: string): Promise<AutoApplyQueueItem[]> {
+    return this.repository.listAutoApplyQueueItems(userId);
+  }
+
+  async updateQueueItemStatus(
+    userId: string,
+    queueItemId: string,
+    input: {
+      status?: AutoApplyQueueStatus;
+      runLogId?: string;
+      applicationId?: string;
+      errorMessage?: string;
+      verificationToken?: string;
+    },
+  ): Promise<AutoApplyQueueItem> {
+    return this.repository.updateAutoApplyQueueItemStatus(userId, queueItemId, input);
+  }
+
+  async removeFromQueue(userId: string, queueItemIds: string[]): Promise<void> {
+    return this.repository.deleteAutoApplyQueueItems(userId, queueItemIds);
+  }
+
+  async getQueueItemByVerificationToken(token: string): Promise<AutoApplyQueueItem | null> {
+    return this.repository.getAutoApplyQueueItemByVerificationToken(token);
   }
 
   async getDocuments(userId: string): Promise<Document[]> {

@@ -127,6 +127,28 @@ export type AutoApplyFailureCategory =
   | "no_form"
   | "manual_handoff";
 
+export type AutoApplyQueueStatus =
+  | "PENDING"
+  | "IN_PROGRESS"
+  | "NEEDS_VERIFICATION"
+  | "COMPLETED"
+  | "FAILED";
+
+export interface AutoApplyQueueItem {
+  id: string;
+  userId: string;
+  jobId: string;
+  status: AutoApplyQueueStatus;
+  runLogId?: string;
+  applicationId?: string;
+  errorMessage?: string;
+  provider?: string;
+  verificationToken?: string;
+  createdAt: ISODateString;
+  updatedAt: ISODateString;
+  job: Pick<Job, "id" | "company" | "title" | "url">;
+}
+
 export type InterviewType =
   | "PHONE_SCREEN"
   | "TECHNICAL"

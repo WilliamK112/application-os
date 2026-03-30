@@ -7,6 +7,7 @@ const navItems = [
   { href: "/dashboard", label: "Dashboard" },
   { href: "/analytics", label: "Analytics" },
   { href: "/jobs", label: "Jobs" },
+  { href: "/auto-apply/queue", label: "Auto-Apply" },
   { href: "/applications", label: "Applications" },
   { href: "/followups", label: "Follow-ups" },
   { href: "/interviews", label: "Interviews" },

@@ -2,16 +2,19 @@
 
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { useCallback } from "react";
+import { useCallback, useState, useTransition } from "react";
 import { filterJobs, sortJobs, paginateJobs } from "@/lib/jobs/filters";
 import { JOB_STATUS_OPTIONS } from "@/lib/constants/status";
 import { updateJobStatusAction } from "./actions";
+import { addJobsToQueueAction } from "@/app/auto-apply/queue/actions";
 import type { Company, Job } from "@/types/domain";
 
 export function JobsClient({ jobs, companies }: { jobs: Job[]; companies: Company[] }) {
   const router = useRouter();
   const searchParams = useSearchParams();
   const companyMap = Object.fromEntries(companies.map((c) => [c.id, c]));
+  const [selectedJobIds, setSelectedJobIds] = useState<Set<string>>(new Set());
+  const [isPending, startTransition] = useTransition();
 
   const search = searchParams.get("search") ?? "";
   const status = searchParams.get("status") ?? "";
@@ -28,13 +31,12 @@ export function JobsClient({ jobs, companies }: { jobs: Job[]; companies: Compan
       } else {
         params.delete(key);
       }
-      params.delete("page"); // reset to page 1 on filter change
+      params.delete("page");
       router.push(`?${params.toString()}`);
     },
     [router, searchParams],
   );
 
-  // Apply filter + sort + paginate
   const filtered = filterJobs(jobs, {
     status: status as Job["status"] || undefined,
     search: search || undefined,
@@ -42,9 +44,43 @@ export function JobsClient({ jobs, companies }: { jobs: Job[]; companies: Compan
   const sorted = sortJobs(filtered, { field: sortField, direction: sortDir });
   const paginated = paginateJobs(sorted, page, 20);
 
+  const toggleJob = (id: string) => {
+    setSelectedJobIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
+
+  const toggleAll = () => {
+    const pageJobIds = paginated.items.map((j) => j.id);
+    setSelectedJobIds((prev) => {
+      const allSelected = pageJobIds.every((id) => prev.has(id));
+      const next = new Set(prev);
+      if (allSelected) {
+        pageJobIds.forEach((id) => next.delete(id));
+      } else {
+        pageJobIds.forEach((id) => next.add(id));
+      }
+      return next;
+    });
+  };
+
+  const addSelectedToQueue = (provider: string) => {
+    if (selectedJobIds.size === 0) return;
+    const formData = new FormData();
+    selectedJobIds.forEach((id) => formData.append("jobIds", id));
+    formData.append("provider", provider);
+    startTransition(() => {
+      addJobsToQueueAction(null, formData);
+      setSelectedJobIds(new Set());
+    });
+  };
+
   return (
     <div>
-      {/* Filter bar — overflow-x-auto on small screens */}
+      {/* Filter bar */}
       <div className="mb-4 overflow-x-auto">
         <div className="flex flex-wrap items-center gap-3 min-w-max">
           <input
@@ -64,15 +100,15 @@ export function JobsClient({ jobs, companies }: { jobs: Job[]; companies: Compan
             <option key={s} value={s}>{s}</option>
           ))}
         </select>
-        <select
-          value={`${sortField}-${sortDir}`}
-          onChange={(e) => {
-            const [field, dir] = e.target.value.split("-") as [typeof sortField, typeof sortDir];
-            updateParam("sort", field);
-            updateParam("dir", dir);
-          }}
-          className="rounded-md border border-slate-300 px-3 py-2 text-sm"
-        >
+          <select
+            value={`${sortField}-${sortDir}`}
+            onChange={(e) => {
+              const [field, dir] = e.target.value.split("-") as [typeof sortField, typeof sortDir];
+              updateParam("sort", field);
+              updateParam("dir", dir);
+            }}
+            className="rounded-md border border-slate-300 px-3 py-2 text-sm"
+          >
           <option value="updatedAt-desc">Recently updated</option>
           <option value="updatedAt-asc">Oldest updated</option>
           <option value="createdAt-desc">Newest added</option>
@@ -82,26 +118,47 @@ export function JobsClient({ jobs, companies }: { jobs: Job[]; companies: Compan
           <option value="title-asc">Title A-Z</option>
           <option value="title-desc">Title Z-A</option>
         </select>
-        <span className="text-sm text-slate-500">{filtered.length} job{filtered.length !== 1 ? "s" : ""}</span>
-        <div className="flex gap-1">
-          <button
-            onClick={() => updateParam("view", "table")}
-            className={`rounded px-2 py-1 text-xs ${view === "table" ? "bg-slate-800 text-white" : "border border-slate-300 text-slate-600"}`}
-          >
-            Table
-          </button>
-          <button
-            onClick={() => updateParam("view", "grouped")}
-            className={`rounded px-2 py-1 text-xs ${view === "grouped" ? "bg-slate-800 text-white" : "border border-slate-300 text-slate-600"}`}
-          >
-            By Company
-          </button>
-        </div>
+          <span className="text-sm text-slate-500">{filtered.length} job{filtered.length !== 1 ? "s" : ""}</span>
+          <div className="flex gap-1">
+            <button
+              onClick={() => updateParam("view", "table")}
+              className={`rounded px-2 py-1 text-xs ${view === "table" ? "bg-slate-800 text-white" : "border border-slate-300 text-slate-600"}`}
+            >
+              Table
+            </button>
+            <button
+              onClick={() => updateParam("view", "grouped")}
+              className={`rounded px-2 py-1 text-xs ${view === "grouped" ? "bg-slate-800 text-white" : "border border-slate-300 text-slate-600"}`}
+            >
+              By Company
+            </button>
+          </div>
         </div>
       </div>
 
+      {/* Batch Selection Bar */}
+      {selectedJobIds.size > 0 && (
+        <div className="mb-4 flex items-center gap-3 rounded-lg border border-blue-300 bg-blue-50 px-4 py-2">
+          <span className="text-sm font-medium text-blue-700">
+            {selectedJobIds.size} job{selectedJobIds.size !== 1 ? "s" : ""} selected
+          </span>
+          <button
+            onClick={() => addSelectedToQueue("linkedin")}
+            disabled={isPending}
+            className="rounded bg-blue-600 px-3 py-1 text-xs font-medium text-white hover:bg-blue-700 disabled:opacity-50"
+          >
+            {isPending ? "Adding..." : `Add to Auto-Apply Queue →`}
+          </button>
+          <button
+            onClick={() => setSelectedJobIds(new Set())}
+            className="text-xs text-slate-500 hover:text-slate-700"
+          >
+            Clear selection
+          </button>
+        </div>
+      )}
+
       {view === "grouped" ? (
-        /* Grouped by company */
         <div className="space-y-6">
           {filtered.length === 0 ? (
             <div className="rounded-lg border border-dashed border-slate-300 p-8 text-center text-slate-500">
@@ -122,6 +179,12 @@ export function JobsClient({ jobs, companies }: { jobs: Job[]; companies: Compan
                 <div key={companyName} className="rounded-lg border border-slate-200 bg-white">
                   <div className="flex items-center justify-between border-b border-slate-100 bg-slate-50 px-4 py-3">
                     <div className="flex items-center gap-2">
+                      <input
+                        type="checkbox"
+                        className="rounded"
+                        checked={companyJobs.every((j) => selectedJobIds.has(j.id))}
+                        onChange={() => companyJobs.forEach((j) => toggleJob(j.id))}
+                      />
                       <h3 className="font-semibold">{companyName}</h3>
                       {companyJobs[0].companyId && companyMap[companyJobs[0].companyId] && (
                         <Link
@@ -139,11 +202,19 @@ export function JobsClient({ jobs, companies }: { jobs: Job[]; companies: Compan
                   <div className="divide-y divide-slate-100">
                     {companyJobs.map((job) => (
                       <div key={job.id} className="flex flex-wrap items-center justify-between gap-2 px-4 py-3">
-                        <div>
-                          <p className="font-medium">{job.title}</p>
-                          <p className="text-sm text-slate-500">
-                            {job.location ?? "—"} · {job.status}
-                          </p>
+                        <div className="flex items-center gap-2">
+                          <input
+                            type="checkbox"
+                            className="rounded"
+                            checked={selectedJobIds.has(job.id)}
+                            onChange={() => toggleJob(job.id)}
+                          />
+                          <div>
+                            <p className="font-medium">{job.title}</p>
+                            <p className="text-sm text-slate-500">
+                              {job.location ?? "—"} · {job.status}
+                            </p>
+                          </div>
                         </div>
                         <div className="flex items-center gap-2">
                           {job.url && (
@@ -186,6 +257,14 @@ export function JobsClient({ jobs, companies }: { jobs: Job[]; companies: Compan
         <table className="min-w-full text-sm">
           <thead className="border-b bg-slate-50 text-left text-slate-600">
             <tr>
+              <th className="px-4 py-3 w-8">
+                <input
+                  type="checkbox"
+                  className="rounded"
+                  checked={paginated.items.length > 0 && paginated.items.every((j) => selectedJobIds.has(j.id))}
+                  onChange={toggleAll}
+                />
+              </th>
               <th className="px-4 py-3">Company</th>
               <th className="px-4 py-3">Title</th>
               <th className="px-4 py-3">Location</th>
@@ -196,13 +275,21 @@ export function JobsClient({ jobs, companies }: { jobs: Job[]; companies: Compan
           <tbody>
             {paginated.items.length === 0 ? (
               <tr>
-                <td colSpan={5} className="px-4 py-8 text-center text-slate-500">
+                <td colSpan={6} className="px-4 py-8 text-center text-slate-500">
                   No jobs match your filters.
                 </td>
               </tr>
             ) : (
               paginated.items.map((job) => (
                 <tr key={job.id} className="border-b last:border-b-0">
+                  <td className="px-4 py-3">
+                    <input
+                      type="checkbox"
+                      className="rounded"
+                      checked={selectedJobIds.has(job.id)}
+                      onChange={() => toggleJob(job.id)}
+                    />
+                  </td>
                   <td className="px-4 py-3">
                     <span className="font-medium">{job.company}</span>
                     {job.companyId && companyMap[job.companyId] && (
@@ -243,7 +330,7 @@ export function JobsClient({ jobs, companies }: { jobs: Job[]; companies: Compan
       </div>
       )}
 
-      {/* Pagination — only for table view */}
+      {/* Pagination */}
       {view === "table" && paginated.totalPages > 1 && (
         <div className="mt-4 flex items-center justify-center gap-2">
           {page > 1 && (

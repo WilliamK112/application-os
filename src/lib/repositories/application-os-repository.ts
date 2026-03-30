@@ -1,6 +1,7 @@
 import {
   ApplicationStatus as PrismaApplicationStatus,
   AutoApplyFailureCategory as PrismaAutoApplyFailureCategory,
+  AutoApplyQueueStatus as PrismaAutoApplyQueueStatus,
   AutoApplyRunStatus as PrismaAutoApplyRunStatus,
   DocumentType as PrismaDocumentType,
   InterviewType as PrismaInterviewType,
@@ -9,6 +10,7 @@ import {
   Prisma,
   type Application as PrismaApplication,
   type AutoApplyRunLog as PrismaAutoApplyRunLog,
+  type AutoApplyQueueItem as PrismaAutoApplyQueueItem,
   type Job as PrismaJob,
   type Profile as PrismaProfile,
   type User as PrismaUser,
@@ -20,6 +22,8 @@ import type {
   ApplicationWithJob,
   ApplicationWithJobAndInterviews,
   AutoApplyFailureCategory,
+  AutoApplyQueueItem,
+  AutoApplyQueueStatus,
   AutoApplyRunLog,
   AutoApplyRunStatus,
   Company,
@@ -184,6 +188,22 @@ export interface ApplicationOsRepository {
   ): Promise<ApplicationWithJob>;
   createAutoApplyRunLogs(userId: string, input: CreateAutoApplyRunLogInput[]): Promise<void>;
   listAutoApplyRunLogs(userId: string, input?: ListAutoApplyRunLogsInput): Promise<AutoApplyRunLog[]>;
+  // Auto-Apply Queue
+  createAutoApplyQueueItems(userId: string, jobIds: string[], provider?: string): Promise<AutoApplyQueueItem[]>;
+  listAutoApplyQueueItems(userId: string): Promise<AutoApplyQueueItem[]>;
+  updateAutoApplyQueueItemStatus(
+    userId: string,
+    queueItemId: string,
+    input: {
+      status?: AutoApplyQueueStatus;
+      runLogId?: string;
+      applicationId?: string;
+      errorMessage?: string;
+      verificationToken?: string;
+    },
+  ): Promise<AutoApplyQueueItem>;
+  deleteAutoApplyQueueItems(userId: string, queueItemIds: string[]): Promise<void>;
+  getAutoApplyQueueItemByVerificationToken(token: string): Promise<AutoApplyQueueItem | null>;
   listDocuments(userId: string): Promise<Document[]>;
   createDocument(userId: string, input: CreateDocumentInput): Promise<Document>;
   listFollowUps(userId: string): Promise<FollowUp[]>;
@@ -297,6 +317,30 @@ const mapAutoApplyRunLog = (
   },
 });
 
+const mapAutoApplyQueueItem = (
+  item: PrismaAutoApplyQueueItem & {
+    job: PrismaJob;
+  },
+): AutoApplyQueueItem => ({
+  id: item.id,
+  userId: item.userId,
+  jobId: item.jobId,
+  status: item.status as AutoApplyQueueStatus,
+  runLogId: item.runLogId ?? undefined,
+  applicationId: item.applicationId ?? undefined,
+  errorMessage: item.errorMessage ?? undefined,
+  provider: item.provider ?? undefined,
+  verificationToken: item.verificationToken ?? undefined,
+  createdAt: item.createdAt.toISOString(),
+  updatedAt: item.updatedAt.toISOString(),
+  job: {
+    id: item.job.id,
+    company: item.job.companyName,
+    title: item.job.title,
+    url: item.job.url ?? undefined,
+  },
+});
+
 class MockApplicationOsRepository implements ApplicationOsRepository {
   private readonly user: User = {
     id: "user_1",
@@ -395,6 +439,7 @@ class MockApplicationOsRepository implements ApplicationOsRepository {
   ];
 
   private readonly autoApplyRunLogs: AutoApplyRunLog[] = [];
+  private readonly autoApplyQueueItems: AutoApplyQueueItem[] = [];
 
   private readonly interviews: Interview[] = [
     {
@@ -621,6 +666,90 @@ class MockApplicationOsRepository implements ApplicationOsRepository {
       .filter((item) => (status ? item.status === status : true))
       .filter((item) => (failureCategory ? item.failureCategory === failureCategory : true))
       .slice(0, limit);
+  }
+
+  // ── Auto-Apply Queue ───────────────────────────────────────────────
+
+  async createAutoApplyQueueItems(
+    userId: string,
+    jobIds: string[],
+    provider?: string,
+  ): Promise<AutoApplyQueueItem[]> {
+    const existingPending = this.autoApplyQueueItems
+      .filter((i) => i.userId === userId && i.status === "PENDING")
+      .map((i) => i.jobId);
+    const newJobIds = jobIds.filter((id) => !existingPending.includes(id));
+
+    const newItems: AutoApplyQueueItem[] = newJobIds.map((jobId) => {
+      const job = this.jobs.find((j) => j.id === jobId);
+      const item: AutoApplyQueueItem = {
+        id: `queue_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
+        userId,
+        jobId,
+        status: "PENDING",
+        provider: provider,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+        job: {
+          id: job?.id ?? jobId,
+          company: job?.company ?? "",
+          title: job?.title ?? "",
+          url: job?.url,
+        },
+      };
+      this.autoApplyQueueItems.push(item);
+      return item;
+    });
+    return newItems;
+  }
+
+  async listAutoApplyQueueItems(userId: string): Promise<AutoApplyQueueItem[]> {
+    return this.autoApplyQueueItems
+      .filter((i) => i.userId === userId)
+      .sort((a, b) => a.createdAt.localeCompare(b.createdAt));
+  }
+
+  async updateAutoApplyQueueItemStatus(
+    userId: string,
+    queueItemId: string,
+    input: {
+      status?: AutoApplyQueueStatus;
+      runLogId?: string;
+      applicationId?: string;
+      errorMessage?: string;
+      verificationToken?: string;
+    },
+  ): Promise<AutoApplyQueueItem> {
+    const idx = this.autoApplyQueueItems.findIndex(
+      (i) => i.id === queueItemId && i.userId === userId,
+    );
+    if (idx === -1) throw new Error("Queue item not found");
+    const item = this.autoApplyQueueItems[idx];
+    const updated: AutoApplyQueueItem = {
+      ...item,
+      status: input.status ?? item.status,
+      runLogId: input.runLogId ?? item.runLogId,
+      applicationId: input.applicationId ?? item.applicationId,
+      errorMessage: input.errorMessage ?? item.errorMessage,
+      verificationToken: input.verificationToken ?? item.verificationToken,
+      updatedAt: new Date().toISOString(),
+    };
+    this.autoApplyQueueItems[idx] = updated;
+    return updated;
+  }
+
+  async deleteAutoApplyQueueItems(userId: string, queueItemIds: string[]): Promise<void> {
+    const ids = new Set(queueItemIds);
+    const toRemove = this.autoApplyQueueItems.findIndex(
+      (i) => i.userId === userId && ids.has(i.id),
+    );
+    if (toRemove !== -1) this.autoApplyQueueItems.splice(toRemove, 1);
+  }
+
+  async getAutoApplyQueueItemByVerificationToken(
+    token: string,
+  ): Promise<AutoApplyQueueItem | null> {
+    return this.autoApplyQueueItems.find((i) => i.verificationToken === token) ?? null;
   }
 
   async listDocuments(userId: string): Promise<Document[]> {
@@ -1255,6 +1384,91 @@ class PrismaApplicationOsRepository implements ApplicationOsRepository {
     });
 
     return logs.map(mapAutoApplyRunLog);
+  }
+
+  // ── Auto-Apply Queue ───────────────────────────────────────────────
+
+  async createAutoApplyQueueItems(
+    userId: string,
+    jobIds: string[],
+    provider?: string,
+  ): Promise<AutoApplyQueueItem[]> {
+    // Filter out already-pending jobs to avoid duplicates
+    const existingPending = await prisma.autoApplyQueueItem.findMany({
+      where: { userId, jobId: { in: jobIds }, status: "PENDING" },
+      select: { jobId: true },
+    });
+    const existingPendingJobIds = new Set(existingPending.map((e) => e.jobId));
+    const newJobIds = jobIds.filter((id) => !existingPendingJobIds.has(id));
+
+    if (newJobIds.length === 0) return [];
+
+    const created = await prisma.autoApplyQueueItem.createMany({
+      data: newJobIds.map((jobId) => ({
+        userId,
+        jobId,
+        provider: provider ?? null,
+        status: "PENDING" as const,
+      })),
+    });
+
+    // Re-fetch with job data (createMany doesn't return IDs, so re-query by user+newJobIds)
+    const items = await prisma.autoApplyQueueItem.findMany({
+      where: { userId, jobId: { in: newJobIds } },
+      include: { job: true },
+      orderBy: { createdAt: "asc" },
+    });
+    return items.map(mapAutoApplyQueueItem);
+  }
+
+  async listAutoApplyQueueItems(userId: string): Promise<AutoApplyQueueItem[]> {
+    const items = await prisma.autoApplyQueueItem.findMany({
+      where: { userId },
+      include: { job: true },
+      orderBy: { createdAt: "asc" },
+    });
+    return items.map(mapAutoApplyQueueItem);
+  }
+
+  async updateAutoApplyQueueItemStatus(
+    userId: string,
+    queueItemId: string,
+    input: {
+      status?: AutoApplyQueueStatus;
+      runLogId?: string;
+      applicationId?: string;
+      errorMessage?: string;
+      verificationToken?: string;
+    },
+  ): Promise<AutoApplyQueueItem> {
+    const updated = await prisma.autoApplyQueueItem.update({
+      where: { id: queueItemId },
+      data: {
+        status: (input.status as PrismaAutoApplyQueueStatus) ?? undefined,
+        runLogId: input.runLogId ?? undefined,
+        applicationId: input.applicationId ?? undefined,
+        errorMessage: input.errorMessage ?? undefined,
+        verificationToken: input.verificationToken ?? undefined,
+      },
+      include: { job: true },
+    });
+    return mapAutoApplyQueueItem(updated);
+  }
+
+  async deleteAutoApplyQueueItems(userId: string, queueItemIds: string[]): Promise<void> {
+    await prisma.autoApplyQueueItem.deleteMany({
+      where: { userId, id: { in: queueItemIds } },
+    });
+  }
+
+  async getAutoApplyQueueItemByVerificationToken(
+    token: string,
+  ): Promise<AutoApplyQueueItem | null> {
+    const item = await prisma.autoApplyQueueItem.findFirst({
+      where: { verificationToken: token },
+      include: { job: true },
+    });
+    return item ? mapAutoApplyQueueItem(item) : null;
   }
 
   async listDocuments(userId: string): Promise<Document[]> {

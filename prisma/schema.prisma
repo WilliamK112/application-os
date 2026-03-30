@@ -43,6 +43,14 @@ enum AutoApplyRunStatus {
   needs_manual
 }
 
+enum AutoApplyQueueStatus {
+  PENDING
+  IN_PROGRESS
+  NEEDS_VERIFICATION
+  COMPLETED
+  FAILED
+}
+
 enum AutoApplyFailureCategory {
   http_failure
   network_failure
@@ -72,14 +80,14 @@ enum QuestionCategory {
 }
 
 model User {
-  id                  String               @id @default(cuid())
-  email               String               @unique
-  name                String
-  passwordHash        String?
-  lastLoginAt         DateTime?
-  timezone            String               @default("America/Chicago")
-  createdAt           DateTime             @default(now())
-  updatedAt           DateTime             @updatedAt
+  id           String    @id @default(cuid())
+  email        String    @unique
+  name         String
+  passwordHash String?
+  lastLoginAt  DateTime?
+  timezone     String    @default("America/Chicago")
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
 
   profile             Profile?
   jobs                Job[]
@@ -91,6 +99,7 @@ model User {
   interviews          Interview[]
   companies           Company[]
   interviewQuestions  InterviewQuestion[]
+  AutoApplyQueueItem  AutoApplyQueueItem[]
 }
 
 model Interview {
@@ -104,114 +113,117 @@ model Interview {
   location        String?
   notes           String?
   questions       String[]      @default([])
-  rating          Int?          // 1-5
-  outcome         String?       // positive / neutral / negative / pending
+  rating          Int? // 1-5
+  outcome         String? // positive / neutral / negative / pending
   createdAt       DateTime      @default(now())
   updatedAt       DateTime      @updatedAt
 
-  user            User          @relation(fields: [userId], references: [id], onDelete: Cascade)
-  application     Application   @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+  user                   User                     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  application            Application              @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+  InterviewQuestionUsage InterviewQuestionUsage[]
 
   @@index([userId, scheduledAt])
   @@index([applicationId])
 }
 
 model Profile {
-  id                 String   @id @default(cuid())
-  userId             String   @unique
-  targetRole         String?
-  targetLocations    String[] @default([])
-  salaryMin          Int?
-  salaryMax          Int?
-  remotePreference   String?
-  bio                String?
-  createdAt          DateTime @default(now())
-  updatedAt          DateTime @updatedAt
+  id               String   @id @default(cuid())
+  userId           String   @unique
+  targetRole       String?
+  targetLocations  String[] @default([])
+  salaryMin        Int?
+  salaryMax        Int?
+  remotePreference String?
+  bio              String?
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
 
-  user               User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
 
 model Company {
-  id         String   @id @default(cuid())
-  userId     String
-  name       String
-  website    String?
-  industry   String?
-  size       String?  // e.g. "1-10", "51-200", "1000+"
-  location   String?
-  notes      String?
-  createdAt  DateTime @default(now())
-  updatedAt  DateTime @updatedAt
+  id        String   @id @default(cuid())
+  userId    String
+  name      String
+  website   String?
+  industry  String?
+  size      String? // e.g. "1-10", "51-200", "1000+"
+  location  String?
+  notes     String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
-  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  jobs       Job[]
+  user User  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  jobs Job[]
 
-  @@index([userId, name])
   @@unique([userId, name])
+  @@index([userId, name])
 }
 
 model Job {
-  id            String        @id @default(cuid())
-  userId        String
-  companyName   String
-  companyId     String?
-  title         String
-  location      String?
-  source        String?
-  salaryMin     Int?
-  salaryMax     Int?
-  status        JobStatus     @default(SAVED)
-  url           String?
-  notes         String?
-  createdAt     DateTime      @default(now())
-  updatedAt     DateTime      @updatedAt
+  id          String    @id @default(cuid())
+  userId      String
+  companyName String
+  companyId   String?
+  title       String
+  location    String?
+  source      String?
+  salaryMin   Int?
+  salaryMax   Int?
+  status      JobStatus @default(SAVED)
+  url         String?
+  notes       String?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
 
-  user          User          @relation(fields: [userId], references: [id], onDelete: Cascade)
-  company       Company?      @relation(fields: [companyId], references: [id], onDelete: SetNull)
-  applications      Application[]
-  autoApplyRunLogs  AutoApplyRunLog[]
+  user               User                 @relation(fields: [userId], references: [id], onDelete: Cascade)
+  company            Company?             @relation(fields: [companyId], references: [id], onDelete: SetNull)
+  applications       Application[]
+  autoApplyRunLogs   AutoApplyRunLog[]
+  AutoApplyQueueItem AutoApplyQueueItem[]
 
   @@index([userId, status])
   @@index([companyId])
 }
 
 model Application {
-  id              String             @id @default(cuid())
-  userId          String
-  jobId           String
-  status          ApplicationStatus  @default(DRAFT)
-  appliedAt       DateTime?
-  lastActivityAt  DateTime?
-  notes           String?
-  createdAt       DateTime           @default(now())
-  updatedAt       DateTime           @updatedAt
+  id             String            @id @default(cuid())
+  userId         String
+  jobId          String
+  status         ApplicationStatus @default(DRAFT)
+  appliedAt      DateTime?
+  lastActivityAt DateTime?
+  notes          String?
+  createdAt      DateTime          @default(now())
+  updatedAt      DateTime          @updatedAt
 
-  user            User               @relation(fields: [userId], references: [id], onDelete: Cascade)
-  job             Job                @relation(fields: [jobId], references: [id], onDelete: Cascade)
-  documents       ApplicationDocument[]
-  followups       FollowUp[]
-  autoApplyLogs   AutoApplyRunLog[]
-  interviews      Interview[]
+  user               User                  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  job                Job                   @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  documents          ApplicationDocument[]
+  followups          FollowUp[]
+  autoApplyLogs      AutoApplyRunLog[]
+  interviews         Interview[]
+  AutoApplyQueueItem AutoApplyQueueItem[]
 
+  @@unique([userId, jobId])
   @@index([userId, status])
   @@index([jobId])
-  @@unique([userId, jobId])
 }
 
 model Document {
-  id            String                @id @default(cuid())
-  userId        String
-  name          String
-  type          DocumentType
-  version       String?
-  url           String?
-  isDefault     Boolean               @default(false)
-  tags          String[]              @default([])
-  createdAt     DateTime              @default(now())
-  updatedAt     DateTime              @updatedAt
+  id        String       @id @default(cuid())
+  userId    String
+  name      String
+  type      DocumentType
+  version   String?
+  url       String?
+  isDefault Boolean      @default(false)
+  tags      String[]     @default([])
+  createdAt DateTime     @default(now())
+  updatedAt DateTime     @updatedAt
 
-  user          User                  @relation(fields: [userId], references: [id], onDelete: Cascade)
-  applications  ApplicationDocument[]
+  user         User                  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  applications ApplicationDocument[]
 
   @@index([userId, type])
 }
@@ -221,89 +233,112 @@ model ApplicationDocument {
   documentId    String
   attachedAt    DateTime @default(now())
 
-  application   Application @relation(fields: [applicationId], references: [id], onDelete: Cascade)
-  document      Document    @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  application Application @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+  document    Document    @relation(fields: [documentId], references: [id], onDelete: Cascade)
 
   @@id([applicationId, documentId])
 }
 
 model FollowUp {
-  id             String           @id @default(cuid())
-  userId         String
-  applicationId  String
-  dueAt          DateTime
-  status         FollowUpStatus   @default(PENDING)
-  channel        String?
-  content        String?
-  completedAt    DateTime?
-  createdAt      DateTime         @default(now())
-  updatedAt      DateTime         @updatedAt
+  id            String         @id @default(cuid())
+  userId        String
+  applicationId String
+  dueAt         DateTime
+  status        FollowUpStatus @default(PENDING)
+  channel       String?
+  content       String?
+  completedAt   DateTime?
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
 
-  user           User             @relation(fields: [userId], references: [id], onDelete: Cascade)
-  application    Application      @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+  user        User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  application Application @relation(fields: [applicationId], references: [id], onDelete: Cascade)
 
   @@index([userId, status, dueAt])
   @@index([applicationId])
 }
 
 model AutoApplyRunLog {
-  id            String            @id @default(cuid())
-  userId        String
-  jobId         String
+  id              String                    @id @default(cuid())
+  userId          String
+  jobId           String
   status          AutoApplyRunStatus
   failureCategory AutoApplyFailureCategory?
   message         String
   applicationId   String?
-  createdAt       DateTime          @default(now())
+  createdAt       DateTime                  @default(now())
 
-  user          User              @relation(fields: [userId], references: [id], onDelete: Cascade)
-  job           Job               @relation(fields: [jobId], references: [id], onDelete: Cascade)
-  application   Application?      @relation(fields: [applicationId], references: [id], onDelete: SetNull)
+  user        User                 @relation(fields: [userId], references: [id], onDelete: Cascade)
+  job         Job                  @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  application Application?         @relation(fields: [applicationId], references: [id], onDelete: SetNull)
+  queueItems  AutoApplyQueueItem[] @relation("QueueToRunLog")
 
   @@index([userId, createdAt])
   @@index([userId, status, createdAt])
   @@index([jobId, createdAt])
 }
 
-model PasswordResetToken {
-  id         String   @id @default(cuid())
-  userId     String
-  tokenHash  String   @unique
-  expiresAt  DateTime
-  usedAt     DateTime?
-  createdAt  DateTime @default(now())
+model AutoApplyQueueItem {
+  id                String               @id @default(cuid())
+  userId            String
+  jobId             String
+  status            AutoApplyQueueStatus @default(PENDING)
+  runLogId          String?
+  applicationId     String?
+  errorMessage      String?
+  provider          String? // e.g. "linkedin", "indeed"
+  verificationToken String? // short-lived token to resume from CAPTCHA pause
+  createdAt         DateTime             @default(now())
+  updatedAt         DateTime             @updatedAt
 
-  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user        User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  job         Job              @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  runLog      AutoApplyRunLog? @relation("QueueToRunLog", fields: [runLogId], references: [id], onDelete: SetNull)
+  application Application?     @relation(fields: [applicationId], references: [id], onDelete: SetNull)
+
+  @@index([userId, status, createdAt])
+  @@index([userId, verificationToken])
+}
+
+model PasswordResetToken {
+  id        String    @id @default(cuid())
+  userId    String
+  tokenHash String    @unique
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId, expiresAt])
 }
 
 model InterviewQuestion {
-  id           String                   @id @default(cuid())
-  userId       String
-  category     QuestionCategory
-  question     String
-  answerHints  String?
-  tags         String[]                 @default([])
-  usageCount   Int                      @default(0)
-  createdAt    DateTime                 @default(now())
-  updatedAt    DateTime                 @updatedAt
+  id          String           @id @default(cuid())
+  userId      String
+  category    QuestionCategory
+  question    String
+  answerHints String?
+  tags        String[]         @default([])
+  usageCount  Int              @default(0)
+  createdAt   DateTime         @default(now())
+  updatedAt   DateTime         @updatedAt
 
-  user         User                     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  usages       InterviewQuestionUsage[]
+  user   User                     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  usages InterviewQuestionUsage[]
 
   @@index([userId, category])
   @@index([userId])
 }
 
 model InterviewQuestionUsage {
-  id                 String             @id @default(cuid())
-  interviewId        String
-  questionId         String
-  usedInInterviewAt DateTime           @default(now())
+  id                String   @id @default(cuid())
+  interviewId       String
+  questionId        String
+  usedInInterviewAt DateTime @default(now())
 
-  interview         Interview          @relation(fields: [interviewId], references: [id], onDelete: Cascade)
-  question          InterviewQuestion  @relation(fields: [questionId], references: [id], onDelete: Cascade)
+  interview Interview         @relation(fields: [interviewId], references: [id], onDelete: Cascade)
+  question  InterviewQuestion @relation(fields: [questionId], references: [id], onDelete: Cascade)
 
   @@unique([interviewId, questionId])
   @@index([questionId])
