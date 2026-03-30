@@ -93,6 +93,15 @@ export default async function JobsPage() {
             />
           </label>
           <label className="text-sm">
+            <span className="mb-1 block text-slate-600">Job URL</span>
+            <input
+              name="url"
+              type="url"
+              className="w-full rounded-md border border-slate-300 px-3 py-2"
+              placeholder="https://linkedin.com/jobs/view/123456"
+            />
+          </label>
+          <label className="text-sm">
             <span className="mb-1 block text-slate-600">Status</span>
             <select
               name="status"

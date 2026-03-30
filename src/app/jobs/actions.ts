@@ -19,6 +19,7 @@ const createJobSchema = z.object({
   source: z.string().trim().max(120).optional(),
   status: z.enum(JOB_STATUS_OPTIONS).default("SAVED"),
   companyId: z.string().trim().optional(),
+  url: z.string().url().optional().or(z.literal("").transform(() => undefined)),
 });
 
 const updateJobStatusSchema = z.object({
@@ -59,6 +60,7 @@ export async function createJobAction(formData: FormData): Promise<void> {
     source: formData.get("source") || undefined,
     status: formData.get("status") || "SAVED",
     companyId: formData.get("companyId") || undefined,
+    url: (formData.get("url") as string) || undefined,
   });
 
   await applicationOsService.createJob(user.id, parsed);
