@@ -18,6 +18,7 @@ export function JobsClient({ jobs, companies }: { jobs: Job[]; companies: Compan
   const sortField = (searchParams.get("sort") ?? "updatedAt") as "updatedAt" | "createdAt" | "company" | "title";
   const sortDir = (searchParams.get("dir") ?? "desc") as "asc" | "desc";
   const page = parseInt(searchParams.get("page") ?? "1", 10);
+  const view = (searchParams.get("view") ?? "table") as "table" | "grouped";
 
   const updateParam = useCallback(
     (key: string, value: string) => {
@@ -81,10 +82,105 @@ export function JobsClient({ jobs, companies }: { jobs: Job[]; companies: Compan
           <option value="title-desc">Title Z-A</option>
         </select>
         <span className="text-sm text-slate-500">{filtered.length} job{filtered.length !== 1 ? "s" : ""}</span>
+        <div className="flex gap-1">
+          <button
+            onClick={() => updateParam("view", "table")}
+            className={`rounded px-2 py-1 text-xs ${view === "table" ? "bg-slate-800 text-white" : "border border-slate-300 text-slate-600"}`}
+          >
+            Table
+          </button>
+          <button
+            onClick={() => updateParam("view", "grouped")}
+            className={`rounded px-2 py-1 text-xs ${view === "grouped" ? "bg-slate-800 text-white" : "border border-slate-300 text-slate-600"}`}
+          >
+            By Company
+          </button>
+        </div>
       </div>
 
-      {/* Table */}
-      <div className="overflow-x-auto rounded-lg border border-slate-200 bg-white">
+      {view === "grouped" ? (
+        /* Grouped by company */
+        <div className="space-y-6">
+          {filtered.length === 0 ? (
+            <div className="rounded-lg border border-dashed border-slate-300 p-8 text-center text-slate-500">
+              No jobs match your filters.
+            </div>
+          ) : (
+            (() => {
+              const grouped = new Map<string, Job[]>();
+              for (const job of filtered) {
+                const key = job.company;
+                if (!grouped.has(key)) grouped.set(key, []);
+                grouped.get(key)!.push(job);
+              }
+              const sortedCompanies = [...grouped.entries()].sort(([a], [b]) =>
+                sortDir === "asc" ? a.localeCompare(b) : b.localeCompare(a),
+              );
+              return sortedCompanies.map(([companyName, companyJobs]) => (
+                <div key={companyName} className="rounded-lg border border-slate-200 bg-white">
+                  <div className="flex items-center justify-between border-b border-slate-100 bg-slate-50 px-4 py-3">
+                    <div className="flex items-center gap-2">
+                      <h3 className="font-semibold">{companyName}</h3>
+                      {companyJobs[0].companyId && companyMap[companyJobs[0].companyId] && (
+                        <Link
+                          href={`/companies/${companyJobs[0].companyId}`}
+                          className="rounded bg-slate-100 px-1.5 py-0.5 text-xs text-slate-600 hover:bg-slate-200"
+                        >
+                          🏢 View
+                        </Link>
+                      )}
+                    </div>
+                    <span className="rounded-full bg-slate-200 px-2 py-0.5 text-xs font-medium text-slate-600">
+                      {companyJobs.length} job{companyJobs.length !== 1 ? "s" : ""}
+                    </span>
+                  </div>
+                  <div className="divide-y divide-slate-100">
+                    {companyJobs.map((job) => (
+                      <div key={job.id} className="flex flex-wrap items-center justify-between gap-2 px-4 py-3">
+                        <div>
+                          <p className="font-medium">{job.title}</p>
+                          <p className="text-sm text-slate-500">
+                            {job.location ?? "—"} · {job.status}
+                          </p>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          {job.url && (
+                            <a
+                              href={job.url}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="rounded border border-slate-300 bg-white px-2 py-1 text-xs hover:bg-slate-100"
+                            >
+                              🔗 Apply
+                            </a>
+                          )}
+                          <form action={updateJobStatusAction} className="flex gap-1">
+                            <input type="hidden" name="jobId" value={job.id} />
+                            <select
+                              name="status"
+                              defaultValue={job.status}
+                              className="rounded-md border border-slate-300 px-2 py-1 text-xs"
+                            >
+                              {JOB_STATUS_OPTIONS.map((s) => (
+                                <option key={s} value={s}>{s}</option>
+                              ))}
+                            </select>
+                            <button type="submit" className="rounded border border-slate-300 bg-white px-2 py-1 text-xs hover:bg-slate-100">
+                              Save
+                            </button>
+                          </form>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ));
+            })()
+          )}
+        </div>
+      ) : (
+        /* Table view */
+        <div className="overflow-x-auto rounded-lg border border-slate-200 bg-white">
         <table className="min-w-full text-sm">
           <thead className="border-b bg-slate-50 text-left text-slate-600">
             <tr>
@@ -143,9 +239,10 @@ export function JobsClient({ jobs, companies }: { jobs: Job[]; companies: Compan
           </tbody>
         </table>
       </div>
+      )}
 
-      {/* Pagination */}
-      {paginated.totalPages > 1 && (
+      {/* Pagination — only for table view */}
+      {view === "table" && paginated.totalPages > 1 && (
         <div className="mt-4 flex items-center justify-center gap-2">
           {page > 1 && (
             <button
