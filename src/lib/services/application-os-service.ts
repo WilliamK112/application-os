@@ -21,6 +21,7 @@ import type {
   Document,
   FollowUp,
   Interview,
+  InterviewQuestion,
   Job,
   Profile,
   User,
@@ -71,6 +72,10 @@ export interface ApplicationOsService {
     outcome?: string | null;
   }): Promise<Interview>;
   deleteInterview(userId: string, interviewId: string): Promise<void>;
+  listQuestions(userId: string, category?: string, search?: string): Promise<InterviewQuestion[]>;
+  createQuestion(userId: string, input: { category: string; question: string; answerHints?: string; tags?: string[] }): Promise<InterviewQuestion>;
+  updateQuestion(userId: string, questionId: string, input: { category?: string; question?: string; answerHints?: string; tags?: string[] }): Promise<InterviewQuestion>;
+  deleteQuestion(userId: string, questionId: string): Promise<void>;
   listCompanies(userId: string): Promise<Company[]>;
   getCompany(userId: string, companyId: string): Promise<Company | null>;
   getCompanyWithStats(userId: string, companyId: string): Promise<CompanyWithStats | null>;
@@ -184,6 +189,35 @@ class DefaultApplicationOsService implements ApplicationOsService {
 
   async deleteInterview(userId: string, interviewId: string): Promise<void> {
     return this.repository.deleteInterview(userId, interviewId);
+  }
+
+  async listQuestions(userId: string, category?: string, search?: string): Promise<InterviewQuestion[]> {
+    return this.repository.listQuestions(userId, { category, search });
+  }
+
+  async createQuestion(userId: string, input: {
+    category: string;
+    question: string;
+    answerHints?: string;
+    tags?: string[];
+  }): Promise<InterviewQuestion> {
+    return this.repository.createQuestion(userId, input);
+  }
+
+  async updateQuestion(userId: string, questionId: string, input: {
+    category?: string;
+    question?: string;
+    answerHints?: string;
+    tags?: string[];
+  }): Promise<InterviewQuestion> {
+    return this.repository.updateQuestion(userId, questionId, {
+      ...input,
+      category: input.category ?? undefined,
+    });
+  }
+
+  async deleteQuestion(userId: string, questionId: string): Promise<void> {
+    return this.repository.deleteQuestion(userId, questionId);
   }
 
   async listCompanies(userId: string): Promise<Company[]> {

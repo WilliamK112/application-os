@@ -5,6 +5,7 @@ import {
   DocumentType as PrismaDocumentType,
   InterviewType as PrismaInterviewType,
   JobStatus as PrismaJobStatus,
+  QuestionCategory as PrismaQuestionCategory,
   Prisma,
   type Application as PrismaApplication,
   type AutoApplyRunLog as PrismaAutoApplyRunLog,
@@ -27,11 +28,13 @@ import type {
   Document,
   FollowUp,
   Interview,
+  InterviewQuestion,
   InterviewType,
   Job,
   JobStatus,
   JobWithAppCount,
   Profile,
+  QuestionCategory,
   User,
 } from "@/types/domain";
 import { prisma } from "@/lib/db/prisma";
@@ -138,6 +141,26 @@ export interface UpdateInterviewInput {
   outcome?: string | null;
 }
 
+export interface CreateQuestionInput {
+  category: string;
+  question: string;
+  answerHints?: string;
+  tags?: string[];
+}
+
+export interface UpdateQuestionInput {
+  category?: string | null;
+  question?: string | null;
+  answerHints?: string | null;
+  tags?: string[];
+}
+
+export interface ListQuestionsInput {
+  category?: string;
+  search?: string;
+  limit?: number;
+}
+
 export interface UploadDocumentResult {
   key: string;
   url: string;
@@ -168,6 +191,10 @@ export interface ApplicationOsRepository {
   createInterview(userId: string, input: CreateInterviewInput): Promise<Interview>;
   updateInterview(userId: string, interviewId: string, input: UpdateInterviewInput): Promise<Interview>;
   deleteInterview(userId: string, interviewId: string): Promise<void>;
+  listQuestions(userId: string, input?: ListQuestionsInput): Promise<InterviewQuestion[]>;
+  createQuestion(userId: string, input: CreateQuestionInput): Promise<InterviewQuestion>;
+  updateQuestion(userId: string, questionId: string, input: UpdateQuestionInput): Promise<InterviewQuestion>;
+  deleteQuestion(userId: string, questionId: string): Promise<void>;
   getDashboardSnapshot(userId: string): Promise<DashboardSnapshot>;
   createFollowUp(userId: string, input: CreateFollowUpInput): Promise<FollowUp>;
   updateFollowUpStatus(userId: string, input: UpdateFollowUpStatusInput): Promise<FollowUp>;
@@ -703,6 +730,115 @@ class MockApplicationOsRepository implements ApplicationOsRepository {
     const idx = this.interviews.findIndex((i) => i.id === interviewId && i.userId === userId);
     if (idx === -1) throw new Error("Interview not found");
     this.interviews.splice(idx, 1);
+  }
+
+  private readonly questions: InterviewQuestion[] = [
+    {
+      id: "q_1",
+      userId: "user_1",
+      category: "BEHAVIORAL",
+      question: "Tell me about yourself.",
+      answerHints: "Structure: Past → Present → Future. 2-3 minutes max.",
+      tags: ["intro", "common"],
+      usageCount: 3,
+      createdAt: isoDaysAgo(14),
+      updatedAt: isoDaysAgo(3),
+    },
+    {
+      id: "q_2",
+      userId: "user_1",
+      category: "BEHAVIORAL",
+      question: "What's your greatest weakness?",
+      answerHints: "Real weakness + concrete improvement action. Not a strength disguised as weakness.",
+      tags: ["common", "tricky"],
+      usageCount: 2,
+      createdAt: isoDaysAgo(14),
+      updatedAt: isoDaysAgo(7),
+    },
+    {
+      id: "q_3",
+      userId: "user_1",
+      category: "TECHNICAL",
+      question: "Explain the difference between var, let, and const in JavaScript.",
+      answerHints: "Scope, hoisting, reassignment. Recommend const > let > var.",
+      tags: ["javascript", "fundamentals"],
+      usageCount: 1,
+      createdAt: isoDaysAgo(10),
+      updatedAt: isoDaysAgo(10),
+    },
+    {
+      id: "q_4",
+      userId: "user_1",
+      category: "SYSTEM_DESIGN",
+      question: "Design a URL shortening service like bit.ly.",
+      answerHints: "Hash vs counter approach, storage, sharding, rate limiting, analytics.",
+      tags: ["system-design", "distributed"],
+      usageCount: 0,
+      createdAt: isoDaysAgo(7),
+      updatedAt: isoDaysAgo(7),
+    },
+    {
+      id: "q_5",
+      userId: "user_1",
+      category: "CODING",
+      question: "Two-sum: find two numbers in an array that add up to a target.",
+      answerHints: "HashMap O(n) solution vs brute force O(n²). Explain trade-offs.",
+      tags: ["array", "hashmap", "algorithms"],
+      usageCount: 1,
+      createdAt: isoDaysAgo(5),
+      updatedAt: isoDaysAgo(5),
+    },
+  ];
+
+  async listQuestions(userId: string, input?: ListQuestionsInput): Promise<InterviewQuestion[]> {
+    let results = this.questions.filter((q) => q.userId === userId);
+    if (input?.category) {
+      results = results.filter((q) => q.category === input.category);
+    }
+    if (input?.search) {
+      const term = input.search.toLowerCase();
+      results = results.filter(
+        (q) =>
+          q.question.toLowerCase().includes(term) ||
+          q.answerHints?.toLowerCase().includes(term) ||
+          q.tags.some((t) => t.toLowerCase().includes(term)),
+      );
+    }
+    const limit = input?.limit ?? 100;
+    return [...results].sort((a, b) => b.usageCount - a.usageCount).slice(0, limit);
+  }
+
+  async createQuestion(userId: string, input: CreateQuestionInput): Promise<InterviewQuestion> {
+    const q: InterviewQuestion = {
+      id: `q_${Date.now()}`,
+      userId,
+      category: input.category as QuestionCategory,
+      question: input.question,
+      answerHints: input.answerHints,
+      tags: input.tags ?? [],
+      usageCount: 0,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    };
+    this.questions.unshift(q);
+    return q;
+  }
+
+  async updateQuestion(userId: string, questionId: string, input: UpdateQuestionInput): Promise<InterviewQuestion> {
+    const q = this.questions.find((q) => q.id === questionId && q.userId === userId);
+    if (!q) throw new Error("Question not found");
+    if (input.category !== undefined) q.category = input.category as QuestionCategory;
+    if (input.question !== undefined) q.question = input.question;
+    if (input.answerHints !== undefined) q.answerHints = input.answerHints ?? undefined;
+    if (input.tags !== undefined) q.tags = input.tags;
+    q.updatedAt = new Date().toISOString();
+    return q;
+  }
+
+  async deleteQuestion(userId: string, questionId: string): Promise<void> {
+    const idx = this.questions.findIndex((q) => q.id === questionId && q.userId === userId);
+    if (idx === -1) throw new Error("Question not found");
+    this.questions.splice(idx, 1);
   }
 
   async getDashboardSnapshot(userId: string): Promise<DashboardSnapshot> {
@@ -1308,6 +1444,98 @@ class PrismaApplicationOsRepository implements ApplicationOsRepository {
     const existing = await prisma.interview.findFirst({ where: { id: interviewId, userId } });
     if (!existing) throw new Error("Interview not found");
     await prisma.interview.delete({ where: { id: interviewId } });
+  }
+
+  async listQuestions(userId: string, input?: ListQuestionsInput): Promise<InterviewQuestion[]> {
+    const questions = await prisma.interviewQuestion.findMany({
+      where: {
+        userId,
+        ...(input?.category ? { category: input.category as PrismaQuestionCategory } : {}),
+        ...(input?.search
+          ? {
+              OR: [
+                { question: { contains: input.search, mode: "insensitive" } as never },
+                { answerHints: { contains: input.search, mode: "insensitive" } as never },
+              ],
+            }
+          : {}),
+      },
+      orderBy: { usageCount: "desc" },
+      take: input?.limit ?? 100,
+    });
+
+    return questions.map((q) => ({
+      id: q.id,
+      userId: q.userId,
+      category: q.category as QuestionCategory,
+      question: q.question,
+      answerHints: q.answerHints ?? undefined,
+      tags: q.tags,
+      usageCount: q.usageCount,
+      createdAt: q.createdAt.toISOString(),
+      updatedAt: q.updatedAt.toISOString(),
+    }));
+  }
+
+  async createQuestion(userId: string, input: CreateQuestionInput): Promise<InterviewQuestion> {
+    const created = await prisma.interviewQuestion.create({
+      data: {
+        userId,
+        category: input.category as PrismaQuestionCategory,
+        question: input.question,
+        answerHints: input.answerHints,
+        tags: input.tags ?? [],
+      },
+    });
+
+    return {
+      id: created.id,
+      userId: created.userId,
+      category: created.category as QuestionCategory,
+      question: created.question,
+      answerHints: created.answerHints ?? undefined,
+      tags: created.tags,
+      usageCount: created.usageCount,
+      createdAt: created.createdAt.toISOString(),
+      updatedAt: created.updatedAt.toISOString(),
+    };
+  }
+
+  async updateQuestion(userId: string, questionId: string, input: UpdateQuestionInput): Promise<InterviewQuestion> {
+    const existing = await prisma.interviewQuestion.findFirst({
+      where: { id: questionId, userId },
+    });
+    if (!existing) throw new Error("Question not found");
+
+    const updated = await prisma.interviewQuestion.update({
+      where: { id: questionId },
+      data: {
+        ...(input.category !== undefined ? { category: input.category as PrismaQuestionCategory | null } : {}),
+        ...(input.question !== undefined ? { question: input.question } : {}),
+        ...(input.answerHints !== undefined ? { answerHints: input.answerHints } : {}),
+        ...(input.tags !== undefined ? { tags: input.tags } : {}),
+      },
+    });
+
+    return {
+      id: updated.id,
+      userId: updated.userId,
+      category: updated.category as QuestionCategory,
+      question: updated.question,
+      answerHints: updated.answerHints ?? undefined,
+      tags: updated.tags,
+      usageCount: updated.usageCount,
+      createdAt: updated.createdAt.toISOString(),
+      updatedAt: updated.updatedAt.toISOString(),
+    };
+  }
+
+  async deleteQuestion(userId: string, questionId: string): Promise<void> {
+    const existing = await prisma.interviewQuestion.findFirst({
+      where: { id: questionId, userId },
+    });
+    if (!existing) throw new Error("Question not found");
+    await prisma.interviewQuestion.delete({ where: { id: questionId } });
   }
 
   async getDashboardSnapshot(userId: string): Promise<DashboardSnapshot> {

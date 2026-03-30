@@ -135,6 +135,16 @@ export type InterviewType =
   | "FINAL_ROUND"
   | "OTHER";
 
+export type QuestionCategory =
+  | "BEHAVIORAL"
+  | "TECHNICAL"
+  | "SYSTEM_DESIGN"
+  | "CODING"
+  | "LEADERSHIP"
+  | "CULTURE_FIT"
+  | "COMPENSATION"
+  | "OTHER";
+
 export interface Interview {
   id: string;
   userId: string;
@@ -148,6 +158,18 @@ export interface Interview {
   questions: string[];
   rating?: number;
   outcome?: string;
+  createdAt: ISODateString;
+  updatedAt: ISODateString;
+}
+
+export interface InterviewQuestion {
+  id: string;
+  userId: string;
+  category: QuestionCategory;
+  question: string;
+  answerHints?: string;
+  tags: string[];
+  usageCount: number;
   createdAt: ISODateString;
   updatedAt: ISODateString;
 }
