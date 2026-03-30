@@ -119,6 +119,120 @@ function QuestionForm({
   );
 }
 
+function SuggestAnswerModal({
+  question,
+  onClose,
+}: {
+  question: InterviewQuestion;
+  onClose: () => void;
+}) {
+  const [suggestion, setSuggestion] = useState<{ answer: string; tips: string[] } | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
+
+  const handleSuggest = async () => {
+    setLoading(true);
+    setError("");
+    try {
+      const res = await fetch("/api/ai/suggest-answer", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          question: question.question,
+          answerHints: question.answerHints,
+          category: question.category,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setError(data.error ?? "Failed to generate suggestion");
+      } else {
+        setSuggestion(data);
+      }
+    } catch {
+      setError("Network error. Please try again.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+      <div className="w-full max-w-lg rounded-xl bg-white shadow-2xl">
+        <div className="flex items-center justify-between border-b border-slate-200 px-6 py-4">
+          <h2 className="text-lg font-semibold text-slate-900">🤖 AI Answer Suggestion</h2>
+          <button onClick={onClose} className="text-slate-400 hover:text-slate-600 text-xl">✕</button>
+        </div>
+        <div className="p-6 space-y-4">
+          <div className="rounded-lg bg-slate-50 p-3 text-sm text-slate-700">
+            <p className="font-medium text-slate-900 mb-1">Question:</p>
+            <p>{question.question}</p>
+          </div>
+          {!suggestion && !loading && (
+            <div className="flex justify-center">
+              <button
+                onClick={handleSuggest}
+                className="rounded-lg bg-gradient-to-r from-purple-600 to-blue-600 px-6 py-3 text-sm font-medium text-white hover:opacity-90 flex items-center gap-2"
+              >
+                ✨ Generate Answer Suggestion
+              </button>
+            </div>
+          )}
+          {loading && (
+            <div className="flex items-center justify-center gap-2 py-6 text-slate-500 text-sm">
+              <span className="animate-spin">⏳</span> Generating suggestion with AI...
+            </div>
+          )}
+          {error && (
+            <div className="rounded-lg bg-red-50 border border-red-200 p-3 text-sm text-red-700">
+              {error}
+            </div>
+          )}
+          {suggestion && (
+            <div className="space-y-3">
+              <div>
+                <p className="text-sm font-semibold text-slate-700 mb-1">Suggested Answer:</p>
+                <div className="rounded-lg bg-blue-50 border border-blue-100 p-4 text-sm text-slate-800 whitespace-pre-wrap">
+                  {suggestion.answer}
+                </div>
+              </div>
+              {suggestion.tips.length > 0 && (
+                <div>
+                  <p className="text-sm font-semibold text-slate-700 mb-1">Tips:</p>
+                  <ul className="space-y-1">
+                    {suggestion.tips.map((tip, i) => (
+                      <li key={i} className="flex gap-2 text-sm text-slate-600">
+                        <span className="text-green-500 shrink-0">✓</span>
+                        <span>{tip}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+        <div className="flex justify-end gap-2 border-t border-slate-200 px-6 py-4">
+          <button
+            onClick={onClose}
+            className="rounded-lg bg-slate-100 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-200"
+          >
+            Close
+          </button>
+          {suggestion && (
+            <button
+              onClick={handleSuggest}
+              className="rounded-lg bg-slate-100 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-200"
+            >
+              🔄 Regenerate
+            </button>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function QuestionCard({
   question,
   onEdit,
@@ -127,6 +241,7 @@ function QuestionCard({
   onEdit: (id: string) => void;
 }) {
   const [confirmDelete, setConfirmDelete] = useState(false);
+  const [showSuggest, setShowSuggest] = useState(false);
 
   const handleDelete = async () => {
     await deleteQuestionAction(question.id);
@@ -163,6 +278,12 @@ function QuestionCard({
         </div>
         <div className="flex flex-col items-end gap-1">
           <button
+            onClick={() => setShowSuggest(true)}
+            className="text-xs text-purple-600 hover:text-purple-800"
+          >
+            ✨ Suggest
+          </button>
+          <button
             onClick={() => onEdit(question.id)}
             className="text-xs text-blue-600 hover:text-blue-800"
           >
@@ -193,6 +314,9 @@ function QuestionCard({
           )}
         </div>
       </div>
+      {showSuggest && (
+        <SuggestAnswerModal question={question} onClose={() => setShowSuggest(false)} />
+      )}
     </article>
   );
 }
