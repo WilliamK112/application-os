@@ -1,0 +1,210 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum JobStatus {
+  SAVED
+  APPLIED
+  CLOSED
+  ARCHIVED
+}
+
+enum ApplicationStatus {
+  DRAFT
+  APPLIED
+  SCREENING
+  INTERVIEW
+  OFFER
+  REJECTED
+  WITHDRAWN
+}
+
+enum DocumentType {
+  RESUME
+  COVER_LETTER
+  PORTFOLIO
+  OTHER
+}
+
+enum FollowUpStatus {
+  PENDING
+  DONE
+  SKIPPED
+}
+
+enum AutoApplyRunStatus {
+  success
+  failed
+  needs_manual
+}
+
+enum AutoApplyFailureCategory {
+  http_failure
+  network_failure
+  no_form
+  manual_handoff
+}
+
+model User {
+  id                  String               @id @default(cuid())
+  email               String               @unique
+  name                String
+  passwordHash        String?
+  lastLoginAt         DateTime?
+  timezone            String               @default("America/Chicago")
+  createdAt           DateTime             @default(now())
+  updatedAt           DateTime             @updatedAt
+
+  profile             Profile?
+  jobs                Job[]
+  applications        Application[]
+  documents           Document[]
+  followups           FollowUp[]
+  passwordResetTokens PasswordResetToken[]
+  autoApplyRunLogs    AutoApplyRunLog[]
+}
+
+model Profile {
+  id                 String   @id @default(cuid())
+  userId             String   @unique
+  targetRole         String?
+  targetLocations    String[] @default([])
+  salaryMin          Int?
+  salaryMax          Int?
+  remotePreference   String?
+  bio                String?
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+
+  user               User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model Job {
+  id            String        @id @default(cuid())
+  userId        String
+  company       String
+  title         String
+  location      String?
+  source        String?
+  salaryMin     Int?
+  salaryMax     Int?
+  status        JobStatus     @default(SAVED)
+  url           String?
+  notes         String?
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+
+  user          User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  applications      Application[]
+  autoApplyRunLogs  AutoApplyRunLog[]
+
+  @@index([userId, status])
+  @@index([company])
+}
+
+model Application {
+  id              String             @id @default(cuid())
+  userId          String
+  jobId           String
+  status          ApplicationStatus  @default(DRAFT)
+  appliedAt       DateTime?
+  lastActivityAt  DateTime?
+  notes           String?
+  createdAt       DateTime           @default(now())
+  updatedAt       DateTime           @updatedAt
+
+  user            User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  job             Job                @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  documents       ApplicationDocument[]
+  followups       FollowUp[]
+  autoApplyLogs   AutoApplyRunLog[]
+
+  @@index([userId, status])
+  @@index([jobId])
+  @@unique([userId, jobId])
+}
+
+model Document {
+  id            String                @id @default(cuid())
+  userId        String
+  name          String
+  type          DocumentType
+  version       String?
+  url           String?
+  isDefault     Boolean               @default(false)
+  tags          String[]              @default([])
+  createdAt     DateTime              @default(now())
+  updatedAt     DateTime              @updatedAt
+
+  user          User                  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  applications  ApplicationDocument[]
+
+  @@index([userId, type])
+}
+
+model ApplicationDocument {
+  applicationId String
+  documentId    String
+  attachedAt    DateTime @default(now())
+
+  application   Application @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+  document      Document    @relation(fields: [documentId], references: [id], onDelete: Cascade)
+
+  @@id([applicationId, documentId])
+}
+
+model FollowUp {
+  id             String           @id @default(cuid())
+  userId         String
+  applicationId  String
+  dueAt          DateTime
+  status         FollowUpStatus   @default(PENDING)
+  channel        String?
+  content        String?
+  completedAt    DateTime?
+  createdAt      DateTime         @default(now())
+  updatedAt      DateTime         @updatedAt
+
+  user           User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  application    Application      @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+
+  @@index([userId, status, dueAt])
+  @@index([applicationId])
+}
+
+model AutoApplyRunLog {
+  id            String            @id @default(cuid())
+  userId        String
+  jobId         String
+  status          AutoApplyRunStatus
+  failureCategory AutoApplyFailureCategory?
+  message         String
+  applicationId   String?
+  createdAt       DateTime          @default(now())
+
+  user          User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  job           Job               @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  application   Application?      @relation(fields: [applicationId], references: [id], onDelete: SetNull)
+
+  @@index([userId, createdAt])
+  @@index([userId, status, createdAt])
+  @@index([jobId, createdAt])
+}
+
+model PasswordResetToken {
+  id         String   @id @default(cuid())
+  userId     String
+  tokenHash  String   @unique
+  expiresAt  DateTime
+  usedAt     DateTime?
+  createdAt  DateTime @default(now())
+
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, expiresAt])
+}

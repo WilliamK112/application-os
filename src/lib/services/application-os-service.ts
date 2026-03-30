@@ -1,0 +1,96 @@
+import {
+  applicationOsRepository,
+  type ApplicationOsRepository,
+  type CreateApplicationInput,
+  type CreateJobInput,
+  type UpdateApplicationStatusInput,
+  type UpdateJobStatusInput,
+  type CreateAutoApplyRunLogInput,
+  type ListAutoApplyRunLogsInput,
+} from "@/lib/repositories/application-os-repository";
+import type {
+  ApplicationWithJob,
+  AutoApplyRunLog,
+  DashboardSnapshot,
+  Document,
+  Job,
+  Profile,
+  User,
+} from "@/types/domain";
+
+export interface ApplicationOsService {
+  getCurrentUser(): Promise<User>;
+  getProfile(userId: string): Promise<Profile | null>;
+  getDashboard(userId: string): Promise<DashboardSnapshot>;
+  getJobs(userId: string): Promise<Job[]>;
+  createJob(userId: string, input: CreateJobInput): Promise<Job>;
+  updateJobStatus(userId: string, input: UpdateJobStatusInput): Promise<Job>;
+  getApplications(userId: string): Promise<ApplicationWithJob[]>;
+  createApplication(userId: string, input: CreateApplicationInput): Promise<ApplicationWithJob>;
+  updateApplicationStatus(
+    userId: string,
+    input: UpdateApplicationStatusInput,
+  ): Promise<ApplicationWithJob>;
+  createAutoApplyRunLogs(userId: string, input: CreateAutoApplyRunLogInput[]): Promise<void>;
+  getAutoApplyRunLogs(userId: string, input?: ListAutoApplyRunLogsInput): Promise<AutoApplyRunLog[]>;
+  getDocuments(userId: string): Promise<Document[]>;
+}
+
+class DefaultApplicationOsService implements ApplicationOsService {
+  constructor(private readonly repository: ApplicationOsRepository) {}
+
+  async getCurrentUser(): Promise<User> {
+    return this.repository.getCurrentUser();
+  }
+
+  async getProfile(userId: string): Promise<Profile | null> {
+    return this.repository.getProfile(userId);
+  }
+
+  async getDashboard(userId: string): Promise<DashboardSnapshot> {
+    return this.repository.getDashboardSnapshot(userId);
+  }
+
+  async getJobs(userId: string): Promise<Job[]> {
+    return this.repository.listJobs(userId);
+  }
+
+  async createJob(userId: string, input: CreateJobInput): Promise<Job> {
+    return this.repository.createJob(userId, input);
+  }
+
+  async updateJobStatus(userId: string, input: UpdateJobStatusInput): Promise<Job> {
+    return this.repository.updateJobStatus(userId, input);
+  }
+
+  async getApplications(userId: string): Promise<ApplicationWithJob[]> {
+    return this.repository.listApplications(userId);
+  }
+
+  async createApplication(userId: string, input: CreateApplicationInput): Promise<ApplicationWithJob> {
+    return this.repository.createApplication(userId, input);
+  }
+
+  async updateApplicationStatus(
+    userId: string,
+    input: UpdateApplicationStatusInput,
+  ): Promise<ApplicationWithJob> {
+    return this.repository.updateApplicationStatus(userId, input);
+  }
+
+  async createAutoApplyRunLogs(userId: string, input: CreateAutoApplyRunLogInput[]): Promise<void> {
+    return this.repository.createAutoApplyRunLogs(userId, input);
+  }
+
+  async getAutoApplyRunLogs(userId: string, input?: ListAutoApplyRunLogsInput): Promise<AutoApplyRunLog[]> {
+    return this.repository.listAutoApplyRunLogs(userId, input);
+  }
+
+  async getDocuments(userId: string): Promise<Document[]> {
+    return this.repository.listDocuments(userId);
+  }
+}
+
+export const applicationOsService: ApplicationOsService = new DefaultApplicationOsService(
+  applicationOsRepository,
+);
