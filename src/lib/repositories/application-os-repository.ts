@@ -1403,7 +1403,7 @@ class PrismaApplicationOsRepository implements ApplicationOsRepository {
 
     if (newJobIds.length === 0) return [];
 
-    const created = await prisma.autoApplyQueueItem.createMany({
+    await prisma.autoApplyQueueItem.createMany({
       data: newJobIds.map((jobId) => ({
         userId,
         jobId,
