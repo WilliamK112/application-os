@@ -54,6 +54,18 @@ export interface ApplicationOsService {
     rating?: number;
     outcome?: string;
   }): Promise<Interview>;
+  updateInterview(userId: string, interviewId: string, input: {
+    interviewType?: string;
+    interviewerName?: string | null;
+    scheduledAt?: string | null;
+    durationMinutes?: number | null;
+    location?: string | null;
+    notes?: string | null;
+    questions?: string[] | null;
+    rating?: number | null;
+    outcome?: string | null;
+  }): Promise<Interview>;
+  deleteInterview(userId: string, interviewId: string): Promise<void>;
 }
 
 class DefaultApplicationOsService implements ApplicationOsService {
@@ -139,6 +151,24 @@ class DefaultApplicationOsService implements ApplicationOsService {
     outcome?: string;
   }): Promise<Interview> {
     return this.repository.createInterview(userId, input);
+  }
+
+  async updateInterview(userId: string, interviewId: string, input: {
+    interviewType?: string;
+    interviewerName?: string | null;
+    scheduledAt?: string | null;
+    durationMinutes?: number | null;
+    location?: string | null;
+    notes?: string | null;
+    questions?: string[] | null;
+    rating?: number | null;
+    outcome?: string | null;
+  }): Promise<Interview> {
+    return this.repository.updateInterview(userId, interviewId, input);
+  }
+
+  async deleteInterview(userId: string, interviewId: string): Promise<void> {
+    return this.repository.deleteInterview(userId, interviewId);
   }
 }
 

@@ -155,7 +155,6 @@ export interface ApplicationOsRepository {
   getDashboardSnapshot(userId: string): Promise<DashboardSnapshot>;
   createFollowUp(userId: string, input: CreateFollowUpInput): Promise<FollowUp>;
   updateFollowUpStatus(userId: string, input: UpdateFollowUpStatusInput): Promise<FollowUp>;
-  getDashboardSnapshot(userId: string): Promise<DashboardSnapshot>;
 }
 
 const now = new Date();
@@ -637,10 +636,11 @@ class MockApplicationOsRepository implements ApplicationOsRepository {
   }
 
   async getDashboardSnapshot(userId: string): Promise<DashboardSnapshot> {
-    const [jobs, applications, followUps] = await Promise.all([
+    const [jobs, applications, followUps, interviews] = await Promise.all([
       this.listJobs(userId),
       this.listApplications(userId),
       this.listFollowUps(userId),
+      this.listInterviews(userId),
     ]);
 
     const activeStatuses = new Set(["APPLIED", "SCREENING", "INTERVIEW"]);
@@ -650,14 +650,22 @@ class MockApplicationOsRepository implements ApplicationOsRepository {
 
     const pendingFollowUps = followUps.filter((followUp) => followUp.status === "PENDING");
 
+    const now = new Date();
+    const upcomingInterviews = interviews
+      .filter((i) => i.scheduledAt && new Date(i.scheduledAt) >= now)
+      .sort((a, b) => new Date(a.scheduledAt!).getTime() - new Date(b.scheduledAt!).getTime())
+      .slice(0, 5);
+
     return {
       metrics: {
         totalJobs: jobs.length,
         totalApplications: applications.length,
         activeApplications,
         pendingFollowUps: pendingFollowUps.length,
+        totalInterviews: interviews.length,
       },
       upcomingFollowUps: pendingFollowUps.sort((a, b) => a.dueAt.localeCompare(b.dueAt)),
+      upcomingInterviews,
     };
   }
 }
@@ -1042,8 +1050,51 @@ class PrismaApplicationOsRepository implements ApplicationOsRepository {
     };
   }
 
+  async updateInterview(userId: string, interviewId: string, input: UpdateInterviewInput): Promise<Interview> {
+    const existing = await prisma.interview.findFirst({ where: { id: interviewId, userId } });
+    if (!existing) throw new Error("Interview not found");
+
+    const updated = await prisma.interview.update({
+      where: { id: interviewId },
+      data: {
+        ...(input.interviewType !== undefined && { interviewType: input.interviewType as PrismaInterviewType }),
+        ...(input.interviewerName !== undefined && { interviewerName: input.interviewerName }),
+        ...(input.scheduledAt !== undefined && { scheduledAt: input.scheduledAt ? new Date(input.scheduledAt) : null }),
+        ...(input.durationMinutes !== undefined && { durationMinutes: input.durationMinutes }),
+        ...(input.location !== undefined && { location: input.location }),
+        ...(input.notes !== undefined && { notes: input.notes }),
+        ...(input.questions !== undefined && { questions: input.questions }),
+        ...(input.rating !== undefined && { rating: input.rating }),
+        ...(input.outcome !== undefined && { outcome: input.outcome }),
+      },
+    });
+
+    return {
+      id: updated.id,
+      userId: updated.userId,
+      applicationId: updated.applicationId,
+      interviewType: updated.interviewType as InterviewType,
+      interviewerName: updated.interviewerName ?? undefined,
+      scheduledAt: toIso(updated.scheduledAt),
+      durationMinutes: updated.durationMinutes ?? undefined,
+      location: updated.location ?? undefined,
+      notes: updated.notes ?? undefined,
+      questions: updated.questions,
+      rating: updated.rating ?? undefined,
+      outcome: updated.outcome ?? undefined,
+      createdAt: updated.createdAt.toISOString(),
+      updatedAt: updated.updatedAt.toISOString(),
+    };
+  }
+
+  async deleteInterview(userId: string, interviewId: string): Promise<void> {
+    const existing = await prisma.interview.findFirst({ where: { id: interviewId, userId } });
+    if (!existing) throw new Error("Interview not found");
+    await prisma.interview.delete({ where: { id: interviewId } });
+  }
+
   async getDashboardSnapshot(userId: string): Promise<DashboardSnapshot> {
-    const [totalJobs, totalApplications, activeApplications, pendingFollowUps, upcomingFollowUps] =
+    const [totalJobs, totalApplications, activeApplications, pendingFollowUps, upcomingFollowUps, totalInterviews, upcomingInterviews] =
       await Promise.all([
         prisma.job.count({ where: { userId } }),
         prisma.application.count({ where: { userId } }),
@@ -1061,6 +1112,12 @@ class PrismaApplicationOsRepository implements ApplicationOsRepository {
           orderBy: { dueAt: "asc" },
           take: 5,
         }),
+        prisma.interview.count({ where: { userId } }),
+        prisma.interview.findMany({
+          where: { userId, scheduledAt: { gte: new Date() } },
+          orderBy: { scheduledAt: "asc" },
+          take: 5,
+        }),
       ]);
 
     return {
@@ -1069,6 +1126,7 @@ class PrismaApplicationOsRepository implements ApplicationOsRepository {
         totalApplications,
         activeApplications,
         pendingFollowUps,
+        totalInterviews,
       },
       upcomingFollowUps: upcomingFollowUps.map((followUp) => ({
         id: followUp.id,
@@ -1081,6 +1139,22 @@ class PrismaApplicationOsRepository implements ApplicationOsRepository {
         completedAt: toIso(followUp.completedAt),
         createdAt: followUp.createdAt.toISOString(),
         updatedAt: followUp.updatedAt.toISOString(),
+      })),
+      upcomingInterviews: upcomingInterviews.map((i) => ({
+        id: i.id,
+        userId: i.userId,
+        applicationId: i.applicationId,
+        interviewType: i.interviewType as InterviewType,
+        interviewerName: i.interviewerName ?? undefined,
+        scheduledAt: toIso(i.scheduledAt),
+        durationMinutes: i.durationMinutes ?? undefined,
+        location: i.location ?? undefined,
+        notes: i.notes ?? undefined,
+        questions: i.questions,
+        rating: i.rating ?? undefined,
+        outcome: i.outcome ?? undefined,
+        createdAt: i.createdAt.toISOString(),
+        updatedAt: i.updatedAt.toISOString(),
       })),
     };
   }

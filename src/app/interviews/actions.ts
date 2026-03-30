@@ -81,4 +81,85 @@ export async function createInterviewAction(
   }
 }
 
+const updateInterviewSchema = z.object({
+  interviewId: z.string().trim().min(1, "Interview ID is required"),
+  interviewType: z.enum(INTERVIEW_TYPE_OPTIONS).optional(),
+  interviewerName: z.string().trim().max(120).nullish(),
+  scheduledAt: z.string().optional().nullable(),
+  durationMinutes: z.coerce.number().int().min(1).max(480).optional().nullable(),
+  location: z.string().trim().max(200).optional().nullable(),
+  notes: z.string().trim().max(2000).optional().nullable(),
+  questions: z.string().trim().max(2000).optional().nullable(),
+  rating: z.coerce.number().int().min(1).max(5).optional().nullable(),
+  outcome: z.string().trim().max(50).optional().nullable(),
+});
+
+export type UpdateInterviewActionState = {
+  error: string;
+};
+
+export async function updateInterviewAction(
+  _prevState: UpdateInterviewActionState,
+  formData: FormData,
+): Promise<UpdateInterviewActionState> {
+  const user = await authSession.getCurrentUserOrThrow();
+
+  const parsed = updateInterviewSchema.safeParse({
+    interviewId: String(formData.get("interviewId") ?? ""),
+    interviewType: formData.get("interviewType") || undefined,
+    interviewerName: formData.get("interviewerName") || undefined,
+    scheduledAt: formData.get("scheduledAt") || undefined,
+    durationMinutes: formData.get("durationMinutes") || undefined,
+    location: formData.get("location") || undefined,
+    notes: formData.get("notes") || undefined,
+    questions: formData.get("questions") || undefined,
+    rating: formData.get("rating") || undefined,
+    outcome: formData.get("outcome") || undefined,
+  });
+
+  if (!parsed.success) {
+    return { error: parsed.error.issues[0]?.message ?? "Invalid input" };
+  }
+
+  const { interviewId, questions: questionsStr, ...rest } = parsed.data;
+  const questions = questionsStr
+    ? questionsStr.split(",").map((q: string) => q.trim()).filter(Boolean)
+    : null;
+
+  try {
+    await applicationOsService.updateInterview(user.id, interviewId, {
+      ...rest,
+      questions,
+    });
+    return { error: "" };
+  } catch (err) {
+    const message = err instanceof Error ? err.message : "Unable to update interview";
+    return { error: message };
+  }
+}
+
+export type DeleteInterviewActionState = {
+  error: string;
+};
+
+export async function deleteInterviewAction(
+  _prevState: DeleteInterviewActionState,
+  formData: FormData,
+): Promise<DeleteInterviewActionState> {
+  const user = await authSession.getCurrentUserOrThrow();
+  const interviewId = String(formData.get("interviewId") ?? "");
+
+  if (!interviewId) {
+    return { error: "Interview ID is required" };
+  }
+
+  try {
+    await applicationOsService.deleteInterview(user.id, interviewId);
+    return { error: "" };
+  } catch (err) {
+    const message = err instanceof Error ? err.message : "Unable to delete interview";
+    return { error: message };
+  }
+}
+
 export { INTERVIEW_TYPE_OPTIONS, INTERVIEW_TYPE_LABELS };

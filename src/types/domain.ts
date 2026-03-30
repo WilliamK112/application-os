@@ -96,11 +96,13 @@ export interface DashboardMetrics {
   totalApplications: number;
   activeApplications: number;
   pendingFollowUps: number;
+  totalInterviews: number;
 }
 
 export interface DashboardSnapshot {
   metrics: DashboardMetrics;
   upcomingFollowUps: FollowUp[];
+  upcomingInterviews: Interview[];
 }
 
 export type AutoApplyRunStatus = "success" | "failed" | "needs_manual";
