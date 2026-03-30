@@ -47,20 +47,21 @@ export function ApplicationList({ rows }: { rows: ApplicationWithJob[] }) {
 
   return (
     <div>
-      {/* Filter bar */}
-      <div className="mb-4 flex flex-wrap items-center gap-3">
-        <input
-          type="search"
-          placeholder="Search company or title..."
-          defaultValue={search}
-          onChange={(e) => updateParam("search", e.target.value)}
-          className="flex-1 min-w-[200px] rounded-md border border-slate-300 px-3 py-2 text-sm"
-        />
-        <select
-          value={status}
-          onChange={(e) => updateParam("status", e.target.value)}
-          className="rounded-md border border-slate-300 px-3 py-2 text-sm"
-        >
+      {/* Filter bar — overflow-x-auto on small screens */}
+      <div className="mb-4 overflow-x-auto">
+        <div className="flex flex-wrap items-center gap-3 min-w-max">
+          <input
+            type="search"
+            placeholder="Search..."
+            defaultValue={search}
+            onChange={(e) => updateParam("search", e.target.value)}
+            className="min-w-[140px] flex-1 rounded-md border border-slate-300 px-3 py-2 text-sm"
+          />
+          <select
+            value={status}
+            onChange={(e) => updateParam("status", e.target.value)}
+            className="rounded-md border border-slate-300 px-3 py-2 text-sm"
+          >
           <option value="">All statuses</option>
           {APPLICATION_STATUS_OPTIONS.map((s) => (
             <option key={s} value={s}>{s}</option>
@@ -87,6 +88,7 @@ export function ApplicationList({ rows }: { rows: ApplicationWithJob[] }) {
         <span className="text-sm text-slate-500">
           {filtered.length} application{filtered.length !== 1 ? "s" : ""}
         </span>
+        </div>
       </div>
 
       {/* Card list */}
