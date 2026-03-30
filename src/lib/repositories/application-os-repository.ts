@@ -2,6 +2,7 @@ import {
   ApplicationStatus as PrismaApplicationStatus,
   AutoApplyFailureCategory as PrismaAutoApplyFailureCategory,
   AutoApplyRunStatus as PrismaAutoApplyRunStatus,
+  DocumentType as PrismaDocumentType,
   JobStatus as PrismaJobStatus,
   Prisma,
   type Application as PrismaApplication,
@@ -68,6 +69,35 @@ export interface ListAutoApplyRunLogsInput {
   limit?: number;
 }
 
+export interface CreateFollowUpInput {
+  applicationId: string;
+  dueAt: string;
+  channel?: string;
+  content?: string;
+}
+
+export interface UpdateFollowUpStatusInput {
+  followUpId: string;
+  status: FollowUpStatus;
+}
+
+export interface CreateDocumentInput {
+  name: string;
+  type: string;
+  version?: string;
+  url?: string;
+  tags?: string[];
+  isDefault?: boolean;
+}
+
+export interface UploadDocumentResult {
+  key: string;
+  url: string;
+  name: string;
+  type: string;
+  size: number;
+}
+
 export interface ApplicationOsRepository {
   getCurrentUser(): Promise<User>;
   getProfile(userId: string): Promise<Profile | null>;
@@ -83,7 +113,10 @@ export interface ApplicationOsRepository {
   createAutoApplyRunLogs(userId: string, input: CreateAutoApplyRunLogInput[]): Promise<void>;
   listAutoApplyRunLogs(userId: string, input?: ListAutoApplyRunLogsInput): Promise<AutoApplyRunLog[]>;
   listDocuments(userId: string): Promise<Document[]>;
+  createDocument(userId: string, input: CreateDocumentInput): Promise<Document>;
   listFollowUps(userId: string): Promise<FollowUp[]>;
+  createFollowUp(userId: string, input: CreateFollowUpInput): Promise<FollowUp>;
+  updateFollowUpStatus(userId: string, input: UpdateFollowUpStatusInput): Promise<FollowUp>;
   getDashboardSnapshot(userId: string): Promise<DashboardSnapshot>;
 }
 
@@ -422,8 +455,64 @@ class MockApplicationOsRepository implements ApplicationOsRepository {
     return this.documents.filter((document) => document.userId === userId);
   }
 
+  async createDocument(userId: string, input: CreateDocumentInput): Promise<Document> {
+    const document: Document = {
+      id: `doc_${Date.now()}`,
+      userId,
+      name: input.name,
+      type: input.type as Document["type"],
+      version: input.version,
+      url: input.url,
+      isDefault: input.isDefault ?? false,
+      tags: input.tags ?? [],
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    };
+    this.documents.unshift(document);
+    return document;
+  }
+
   async listFollowUps(userId: string): Promise<FollowUp[]> {
     return this.followUps.filter((followUp) => followUp.userId === userId);
+  }
+
+  async createFollowUp(userId: string, input: CreateFollowUpInput): Promise<FollowUp> {
+    const application = this.applications.find(
+      (app) => app.id === input.applicationId && app.userId === userId,
+    );
+    if (!application) {
+      throw new Error("Application not found");
+    }
+
+    const followUp: FollowUp = {
+      id: `follow_${Date.now()}`,
+      userId,
+      applicationId: input.applicationId,
+      dueAt: input.dueAt,
+      status: "PENDING",
+      channel: input.channel,
+      content: input.content,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    };
+    this.followUps.push(followUp);
+    return followUp;
+  }
+
+  async updateFollowUpStatus(userId: string, input: UpdateFollowUpStatusInput): Promise<FollowUp> {
+    const followUp = this.followUps.find(
+      (f) => f.id === input.followUpId && f.userId === userId,
+    );
+    if (!followUp) {
+      throw new Error("Follow-up not found");
+    }
+
+    followUp.status = input.status;
+    if (input.status === "DONE") {
+      followUp.completedAt = new Date().toISOString();
+    }
+    followUp.updatedAt = new Date().toISOString();
+    return followUp;
   }
 
   async getDashboardSnapshot(userId: string): Promise<DashboardSnapshot> {
@@ -651,6 +740,33 @@ class PrismaApplicationOsRepository implements ApplicationOsRepository {
     }));
   }
 
+  async createDocument(userId: string, input: CreateDocumentInput): Promise<Document> {
+    const created = await prisma.document.create({
+      data: {
+        userId,
+        name: input.name,
+        type: input.type as PrismaDocumentType,
+        version: input.version,
+        url: input.url,
+        tags: input.tags ?? [],
+        isDefault: input.isDefault ?? false,
+      },
+    });
+
+    return {
+      id: created.id,
+      userId: created.userId,
+      name: created.name,
+      type: created.type,
+      version: created.version ?? undefined,
+      url: created.url ?? undefined,
+      isDefault: created.isDefault,
+      tags: created.tags,
+      createdAt: created.createdAt.toISOString(),
+      updatedAt: created.updatedAt.toISOString(),
+    };
+  }
+
   async listFollowUps(userId: string): Promise<FollowUp[]> {
     const followUps = await prisma.followUp.findMany({
       where: { userId },
@@ -669,6 +785,70 @@ class PrismaApplicationOsRepository implements ApplicationOsRepository {
       createdAt: followUp.createdAt.toISOString(),
       updatedAt: followUp.updatedAt.toISOString(),
     }));
+  }
+
+  async createFollowUp(userId: string, input: CreateFollowUpInput): Promise<FollowUp> {
+    const application = await prisma.application.findFirst({
+      where: { id: input.applicationId, userId },
+    });
+    if (!application) {
+      throw new Error("Application not found");
+    }
+
+    const created = await prisma.followUp.create({
+      data: {
+        userId,
+        applicationId: input.applicationId,
+        dueAt: new Date(input.dueAt),
+        channel: input.channel,
+        content: input.content,
+      },
+    });
+
+    return {
+      id: created.id,
+      userId: created.userId,
+      applicationId: created.applicationId,
+      dueAt: created.dueAt.toISOString(),
+      status: created.status,
+      channel: created.channel ?? undefined,
+      content: created.content ?? undefined,
+      completedAt: toIso(created.completedAt),
+      createdAt: created.createdAt.toISOString(),
+      updatedAt: created.updatedAt.toISOString(),
+    };
+  }
+
+  async updateFollowUpStatus(userId: string, input: UpdateFollowUpStatusInput): Promise<FollowUp> {
+    const followUp = await prisma.followUp.updateMany({
+      where: { id: input.followUpId, userId },
+      data: {
+        status: input.status as Prisma.FollowUpStatus,
+        completedAt: input.status === "DONE" ? new Date() : null,
+      },
+    });
+
+    if (followUp.count === 0) {
+      throw new Error("Follow-up not found");
+    }
+
+    const updated = await prisma.followUp.findUnique({ where: { id: input.followUpId } });
+    if (!updated) {
+      throw new Error("Follow-up not found after update");
+    }
+
+    return {
+      id: updated.id,
+      userId: updated.userId,
+      applicationId: updated.applicationId,
+      dueAt: updated.dueAt.toISOString(),
+      status: updated.status,
+      channel: updated.channel ?? undefined,
+      content: updated.content ?? undefined,
+      completedAt: toIso(updated.completedAt),
+      createdAt: updated.createdAt.toISOString(),
+      updatedAt: updated.updatedAt.toISOString(),
+    };
   }
 
   async getDashboardSnapshot(userId: string): Promise<DashboardSnapshot> {

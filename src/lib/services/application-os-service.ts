@@ -2,8 +2,10 @@ import {
   applicationOsRepository,
   type ApplicationOsRepository,
   type CreateApplicationInput,
+  type CreateFollowUpInput,
   type CreateJobInput,
   type UpdateApplicationStatusInput,
+  type UpdateFollowUpStatusInput,
   type UpdateJobStatusInput,
   type CreateAutoApplyRunLogInput,
   type ListAutoApplyRunLogsInput,
@@ -13,6 +15,7 @@ import type {
   AutoApplyRunLog,
   DashboardSnapshot,
   Document,
+  FollowUp,
   Job,
   Profile,
   User,
@@ -34,6 +37,9 @@ export interface ApplicationOsService {
   createAutoApplyRunLogs(userId: string, input: CreateAutoApplyRunLogInput[]): Promise<void>;
   getAutoApplyRunLogs(userId: string, input?: ListAutoApplyRunLogsInput): Promise<AutoApplyRunLog[]>;
   getDocuments(userId: string): Promise<Document[]>;
+  getFollowUps(userId: string): Promise<FollowUp[]>;
+  createFollowUp(userId: string, input: CreateFollowUpInput): Promise<FollowUp>;
+  updateFollowUpStatus(userId: string, input: UpdateFollowUpStatusInput): Promise<FollowUp>;
 }
 
 class DefaultApplicationOsService implements ApplicationOsService {
@@ -88,6 +94,18 @@ class DefaultApplicationOsService implements ApplicationOsService {
 
   async getDocuments(userId: string): Promise<Document[]> {
     return this.repository.listDocuments(userId);
+  }
+
+  async getFollowUps(userId: string): Promise<FollowUp[]> {
+    return this.repository.listFollowUps(userId);
+  }
+
+  async createFollowUp(userId: string, input: CreateFollowUpInput): Promise<FollowUp> {
+    return this.repository.createFollowUp(userId, input);
+  }
+
+  async updateFollowUpStatus(userId: string, input: UpdateFollowUpStatusInput): Promise<FollowUp> {
+    return this.repository.updateFollowUpStatus(userId, input);
   }
 }
 
