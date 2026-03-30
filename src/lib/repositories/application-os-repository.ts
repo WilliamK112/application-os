@@ -1391,6 +1391,43 @@ class PrismaApplicationOsRepository implements ApplicationOsRepository {
     return company ? mapCompany(company) : null;
   }
 
+  async getCompanyWithStats(userId: string, companyId: string): Promise<CompanyWithStats | null> {
+    const company = await prisma.company.findFirst({ where: { id: companyId, userId } });
+    if (!company) return null;
+
+    const jobsWithApps = await prisma.job.findMany({
+      where: { companyId },
+      include: { _count: { select: { applications: true } } },
+      orderBy: { updatedAt: "desc" },
+    });
+
+    const jobs: JobWithAppCount[] = jobsWithApps.map((j) => ({
+      id: j.id,
+      userId: j.userId,
+      company: j.companyName,
+      companyId: j.companyId ?? undefined,
+      title: j.title,
+      location: j.location ?? undefined,
+      source: j.source ?? undefined,
+      salaryMin: j.salaryMin ?? undefined,
+      salaryMax: j.salaryMax ?? undefined,
+      status: j.status as JobStatus,
+      url: j.url ?? undefined,
+      notes: j.notes ?? undefined,
+      createdAt: j.createdAt.toISOString(),
+      updatedAt: j.updatedAt.toISOString(),
+      applicationCount: j._count.applications,
+    }));
+
+    const totalApplications = jobs.reduce((sum, j) => sum + j.applicationCount, 0);
+
+    return {
+      company: mapCompany(company),
+      jobs,
+      totalApplications,
+    };
+  }
+
   async createCompany(userId: string, input: CreateCompanyInput): Promise<Company> {
     const company = await prisma.company.create({
       data: { userId, ...input },

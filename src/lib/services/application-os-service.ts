@@ -16,6 +16,7 @@ import type {
   ApplicationWithJobAndInterviews,
   AutoApplyRunLog,
   Company,
+  CompanyWithStats,
   DashboardSnapshot,
   Document,
   FollowUp,
@@ -72,6 +73,7 @@ export interface ApplicationOsService {
   deleteInterview(userId: string, interviewId: string): Promise<void>;
   listCompanies(userId: string): Promise<Company[]>;
   getCompany(userId: string, companyId: string): Promise<Company | null>;
+  getCompanyWithStats(userId: string, companyId: string): Promise<CompanyWithStats | null>;
   createCompany(userId: string, input: CreateCompanyInput): Promise<Company>;
   updateCompany(userId: string, companyId: string, input: Partial<CreateCompanyInput>): Promise<Company>;
   deleteCompany(userId: string, companyId: string): Promise<void>;
@@ -190,6 +192,10 @@ class DefaultApplicationOsService implements ApplicationOsService {
 
   async getCompany(userId: string, companyId: string): Promise<Company | null> {
     return this.repository.getCompany(userId, companyId);
+  }
+
+  async getCompanyWithStats(userId: string, companyId: string): Promise<CompanyWithStats | null> {
+    return this.repository.getCompanyWithStats(userId, companyId);
   }
 
   async createCompany(userId: string, input: CreateCompanyInput): Promise<Company> {

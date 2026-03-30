@@ -75,7 +75,17 @@ export async function importJobFromUrlAction(formData: FormData): Promise<void> 
   });
 
   const draft = parseJobUrlToDraft(parsed.jobUrl);
-  await applicationOsService.createJob(user.id, draft);
+
+  // Try to link to an existing company by matching company name
+  const companies = await applicationOsService.listCompanies(user.id);
+  const matchedCompany = companies.find(
+    (c) => c.name.toLowerCase() === draft.company.toLowerCase(),
+  );
+
+  await applicationOsService.createJob(user.id, {
+    ...draft,
+    companyId: matchedCompany?.id,
+  });
 
   revalidateAdapter.revalidatePath("/jobs");
   revalidateAdapter.revalidatePath("/applications");
@@ -89,13 +99,22 @@ export async function bulkImportJobsAction(formData: FormData): Promise<void> {
     bulkInput: formData.get("bulkInput"),
   });
 
-  const jobs = parseBulkJobImport(parsed.bulkInput);
-  if (jobs.length === 0) {
+  const jobDrafts = parseBulkJobImport(parsed.bulkInput);
+  if (jobDrafts.length === 0) {
     throw new Error("No valid URLs or CSV rows found.");
   }
 
-  for (const job of jobs) {
-    await applicationOsService.createJob(user.id, job);
+  // Load all companies once for matching
+  const companies = await applicationOsService.listCompanies(user.id);
+
+  for (const draft of jobDrafts) {
+    const matchedCompany = companies.find(
+      (c) => c.name.toLowerCase() === draft.company.toLowerCase(),
+    );
+    await applicationOsService.createJob(user.id, {
+      ...draft,
+      companyId: matchedCompany?.id,
+    });
   }
 
   revalidateAdapter.revalidatePath("/jobs");
