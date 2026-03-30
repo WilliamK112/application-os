@@ -2,54 +2,60 @@ name: CI
 
 on:
   push:
-    paths:
-      - "**"
+    branches: [main]
   pull_request:
+    branches: [main]
+
+env:
+  DATABASE_URL: postgresql://postgres:postgres@localhost:5432/application_os_test
+  NEXTAUTH_URL: http://localhost:3000
+  AUTH_SECRET: test-secret-for-e2e-tests-only-must-be-32chars
 
 jobs:
-  verify:
+  lint-and-test:
+    name: Lint + Unit Tests
     runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+      - run: npm ci
+      - run: npm run lint
+      - run: npm test
+
+  e2e:
+    name: E2E Tests (Playwright)
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request'
     services:
       postgres:
         image: postgres:16
         env:
           POSTGRES_USER: postgres
           POSTGRES_PASSWORD: postgres
-          POSTGRES_DB: application_os
+          POSTGRES_DB: application_os_test
         ports:
           - 5432:5432
         options: >-
-          --health-cmd "pg_isready -U postgres -d application_os"
+          --health-cmd pg_isready
           --health-interval 10s
           --health-timeout 5s
-          --health-retries 10
-
-    env:
-      DATABASE_URL: postgresql://postgres:postgres@localhost:5432/application_os?schema=public
-      AUTH_SECRET: ci-auth-secret
-      AUTH_TRUST_HOST: true
+          --health-retries 5
 
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
         with:
-          node-version: 20
-          cache: npm
-
-      - name: Install dependencies
-        run: npm ci
-
-      - name: Apply migrations
-        run: npx prisma migrate deploy
-
-      - name: Seed database
-        run: npm run prisma:seed
-
-      - name: Run tests
-        run: npm test
-
-      - name: Run build
-        run: npm run build
+          node-version: "20"
+          cache: "npm"
+      - run: npm ci
+      - run: npx playwright install --with-deps chromium
+      - run: npx prisma generate
+      - run: npx prisma migrate deploy
+      - run: npm run e2e
+        env:
+          PLAYWRIGHT_BASE_URL: http://localhost:3000
+          E2E_TEST_EMAIL: e2e_${{ github.run_id }}@test.com
+          E2E_TEST_PASSWORD: e2ePassword123!
