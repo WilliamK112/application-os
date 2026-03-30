@@ -230,12 +230,21 @@ export function QuestionsClient({ questions }: { questions: InterviewQuestion[] 
             {categoryFilter && ` in ${QUESTION_CATEGORY_LABELS[categoryFilter] ?? categoryFilter}`}
           </p>
         </div>
-        <button
-          onClick={() => { setShowForm(!showForm); setEditingId(null); }}
-          className="rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700"
-        >
-          {showForm ? "✕ Cancel" : "+ New Question"}
-        </button>
+        <div className="flex gap-2">
+          <a
+            href="/api/export/questions/pdf"
+            download="interview-question-bank.pdf"
+            className="rounded-md bg-slate-100 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-200 flex items-center gap-1"
+          >
+            📄 Export PDF
+          </a>
+          <button
+            onClick={() => { setShowForm(!showForm); setEditingId(null); }}
+            className="rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700"
+          >
+            {showForm ? "✕ Cancel" : "+ New Question"}
+          </button>
+        </div>
       </div>
 
       {/* Create form */}
