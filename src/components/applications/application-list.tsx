@@ -2,19 +2,22 @@
 
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { useCallback } from "react";
+import { useCallback, useState } from "react";
 import {
   filterApplications,
   sortApplications,
   paginateApplications,
 } from "@/lib/jobs/filters";
 import { APPLICATION_STATUS_OPTIONS } from "@/lib/constants/status";
-import { updateApplicationStatusAction } from "@/app/applications/actions";
+import { updateApplicationStatusAction, bulkUpdateApplicationStatusAction } from "@/app/applications/actions";
 import type { ApplicationWithJob } from "@/types/domain";
 
 export function ApplicationList({ rows }: { rows: ApplicationWithJob[] }) {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [bulkStatus, setBulkStatus] = useState<string>("");
+  const [bulkPending, setBulkPending] = useState(false);
 
   const search = searchParams.get("search") ?? "";
   const status = searchParams.get("status") ?? "";
@@ -91,6 +94,48 @@ export function ApplicationList({ rows }: { rows: ApplicationWithJob[] }) {
         </div>
       </div>
 
+      {/* Bulk action bar — appears when >=1 items selected */}
+      {selectedIds.size > 0 && (
+        <div className="mb-4 flex flex-wrap items-center gap-3 rounded-lg border border-blue-300 bg-blue-50 px-4 py-3">
+          <span className="text-sm font-medium text-blue-700">
+            {selectedIds.size} selected
+          </span>
+          <select
+            value={bulkStatus}
+            onChange={(e) => setBulkStatus(e.target.value)}
+            className="rounded-md border border-slate-300 px-2 py-1 text-sm"
+          >
+            <option value="">Pick new status...</option>
+            {APPLICATION_STATUS_OPTIONS.map((s) => (
+              <option key={s} value={s}>{s}</option>
+            ))}
+          </select>
+          <button
+            disabled={!bulkStatus || bulkPending}
+            onClick={async () => {
+              if (!bulkStatus) return;
+              setBulkPending(true);
+              try {
+                await bulkUpdateApplicationStatusAction(Array.from(selectedIds), bulkStatus);
+                setSelectedIds(new Set());
+                setBulkStatus("");
+              } finally {
+                setBulkPending(false);
+              }
+            }}
+            className="rounded bg-blue-600 px-3 py-1 text-sm font-medium text-white disabled:opacity-50"
+          >
+            {bulkPending ? "Applying..." : "Apply"}
+          </button>
+          <button
+            onClick={() => { setSelectedIds(new Set()); setBulkStatus(""); }}
+            className="text-sm text-slate-500 hover:text-slate-700"
+          >
+            Clear
+          </button>
+        </div>
+      )}
+
       {/* Card list */}
       <div className="space-y-3">
         {paginated.items.length === 0 ? (
@@ -100,6 +145,21 @@ export function ApplicationList({ rows }: { rows: ApplicationWithJob[] }) {
         ) : (
           paginated.items.map(({ application, job, interviewSummary }) => (
             <article key={application.id} className="rounded-lg border border-slate-200 bg-white p-4">
+              <div className="mb-2 flex items-center gap-2">
+                <input
+                  type="checkbox"
+                  checked={selectedIds.has(application.id)}
+                  onChange={(e) => {
+                    setSelectedIds((prev) => {
+                      const next = new Set(prev);
+                      if (e.target.checked) next.add(application.id);
+                      else next.delete(application.id);
+                      return next;
+                    });
+                  }}
+                  className="h-4 w-4 rounded border-slate-400"
+                />
+              </div>
               <div className="flex flex-wrap items-start justify-between gap-2">
                 <div>
                   <h3 className="text-lg font-semibold">

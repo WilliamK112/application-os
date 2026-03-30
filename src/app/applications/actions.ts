@@ -22,6 +22,11 @@ const updateApplicationStatusSchema = z.object({
   status: z.enum(APPLICATION_STATUS_OPTIONS),
 });
 
+const bulkUpdateApplicationStatusSchema = z.object({
+  applicationIds: z.string().min(1).transform(s => s.split(",").filter(Boolean)),
+  status: z.enum(APPLICATION_STATUS_OPTIONS),
+});
+
 function safeRevalidatePath(path: string): void {
   try {
     revalidatePath(path);
@@ -98,6 +103,21 @@ export async function updateApplicationStatusAction(formData: FormData): Promise
   });
 
   await applicationOsService.updateApplicationStatus(user.id, parsed);
+  safeRevalidatePath("/applications");
+  safeRevalidatePath("/dashboard");
+}
+
+export async function bulkUpdateApplicationStatusAction(
+  applicationIds: string[],
+  status: string,
+): Promise<void> {
+  const user = await authSession.getCurrentUserOrThrow();
+  const parsed = bulkUpdateApplicationStatusSchema.parse({ applicationIds: applicationIds.join(","), status });
+  await Promise.all(
+    parsed.applicationIds.map((id) =>
+      applicationOsService.updateApplicationStatus(user.id, { applicationId: id, status: parsed.status }),
+    ),
+  );
   safeRevalidatePath("/applications");
   safeRevalidatePath("/dashboard");
 }
