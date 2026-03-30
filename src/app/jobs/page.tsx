@@ -1,3 +1,4 @@
+import { Suspense } from "react";
 import { AppShell } from "@/components/app-shell";
 import { AutoApplyPanel } from "@/components/auto-apply-panel";
 import { JOB_STATUS_OPTIONS } from "@/lib/constants/status";
@@ -8,8 +9,8 @@ import {
   bulkImportJobsAction,
   createJobAction,
   importJobFromUrlAction,
-  updateJobStatusAction,
 } from "./actions";
+import { JobsClient } from "./jobs-client";
 
 export const jobsPageAuth = {
   getCurrentUserOrThrow,
@@ -145,48 +146,9 @@ export default async function JobsPage() {
         submitChecklists={submitChecklists}
       />
 
-      <div className="rounded-lg border border-slate-200 bg-white">
-        <table className="min-w-full text-sm">
-          <thead className="border-b bg-slate-50 text-left text-slate-600">
-            <tr>
-              <th className="px-4 py-3">Company</th>
-              <th className="px-4 py-3">Title</th>
-              <th className="px-4 py-3">Location</th>
-              <th className="px-4 py-3">Status</th>
-              <th className="px-4 py-3">Updated</th>
-            </tr>
-          </thead>
-          <tbody>
-            {jobs.map((job) => (
-              <tr key={job.id} className="border-b last:border-b-0">
-                <td className="px-4 py-3 font-medium">{job.company}</td>
-                <td className="px-4 py-3">{job.title}</td>
-                <td className="px-4 py-3">{job.location ?? "-"}</td>
-                <td className="px-4 py-3">
-                  <form action={updateJobStatusAction}>
-                    <input type="hidden" name="jobId" value={job.id} />
-                    <select
-                      name="status"
-                      defaultValue={job.status}
-                      className="rounded-md border border-slate-300 px-2 py-1"
-                    >
-                      {JOB_STATUS_OPTIONS.map((status) => (
-                        <option key={status} value={status}>
-                          {status}
-                        </option>
-                      ))}
-                    </select>
-                    <button type="submit" className="ml-2 rounded border border-slate-300 px-2 py-1 text-xs">
-                      Save
-                    </button>
-                  </form>
-                </td>
-                <td className="px-4 py-3">{new Date(job.updatedAt).toLocaleDateString()}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
+      <Suspense fallback={<div className="text-sm text-slate-500 p-4">Loading jobs...</div>}>
+        <JobsClient jobs={jobs} />
+      </Suspense>
     </AppShell>
   );
 }
