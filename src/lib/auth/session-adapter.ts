@@ -36,12 +36,20 @@ export async function getCurrentUserOrThrow(): Promise<User> {
   };
 }
 
-/**
- * Lightweight session for route handlers.
- * Returns { user: { id } } so routes can do: if (!session?.user?.id)
- */
-export async function authSession(): Promise<{ user: { id: string } }> {
-  const session = await getServerSession(authOptions);
-  if (!session?.user?.id) throw new Error("Unauthorized");
-  return { user: { id: session.user.id } };
-}
+// eslint-disable-next-line @typescript-eslint/no-floating-promises
+const _authSessionBase = async () => {
+  // eslint-disable-next-line @typescript-eslint/no-use-before-define
+  return _authSession.getCurrentUserOrThrow().then((user) => ({ user: { id: user.id } }));
+};
+
+const _authSession: typeof _authSessionBase & { getCurrentUserOrThrow: () => Promise<User> } =
+  _authSessionBase as typeof _authSessionBase & { getCurrentUserOrThrow: () => Promise<User> };
+
+Object.defineProperty(_authSession, 'getCurrentUserOrThrow', {
+  value: getCurrentUserOrThrow,
+  writable: true,
+  configurable: true,
+});
+
+export const authSession: typeof _authSessionBase & { getCurrentUserOrThrow: () => Promise<User> } = _authSession;
+export { _authSession as authSessionGetter };
