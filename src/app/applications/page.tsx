@@ -3,6 +3,7 @@ import { AppShell } from "@/components/app-shell";
 import { ApplicationCreateForm } from "@/components/application-create-form";
 import { getCurrentUserOrThrow } from "@/lib/auth/session";
 import { applicationOsService } from "@/lib/services/application-os-service";
+import { bulkImportApplicationsAction } from "./actions";
 import { ApplicationsClient } from "./applications-client";
 
 export const applicationsPageAuth = {
@@ -21,6 +22,28 @@ export default async function ApplicationsPage() {
       <section className="mb-6 rounded-lg border border-slate-200 bg-white p-4">
         <h3 className="text-lg font-semibold">Add Application</h3>
         <ApplicationCreateForm jobs={jobs} />
+      </section>
+
+      <section className="mb-6 rounded-lg border border-slate-200 bg-white p-4">
+        <h3 className="text-lg font-semibold">Import Applications (CSV)</h3>
+        <p className="mt-1 text-sm text-slate-600">
+          CSV format: company,jobTitle,status,appliedAt,notes. Status must be one of: DRAFT, APPLIED, SCREENING, INTERVIEW, OFFER, REJECTED, WITHDRAWN.
+        </p>
+        <form action={bulkImportApplicationsAction} className="mt-4 space-y-3">
+          <textarea
+            name="bulkInput"
+            required
+            rows={6}
+            className="w-full rounded-md border border-slate-300 px-3 py-2 font-mono text-sm"
+            placeholder={"Google,SWE,APPLIED,2026-03-15,Phone screen scheduled\nStartup,Intern,DRAFT,,\nAcme AI,Frontend Engineer,INTERVIEW,2026-03-20,"}
+          />
+          <button
+            type="submit"
+            className="rounded-md bg-slate-700 px-4 py-2 text-sm font-medium text-white hover:bg-slate-600"
+          >
+            Import Applications
+          </button>
+        </form>
       </section>
 
       <section className="mb-6 rounded-lg border border-slate-200 bg-white p-4">

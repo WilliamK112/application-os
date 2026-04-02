@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { authSession } from "@/lib/auth/session-adapter";
 import { APPLICATION_STATUS_OPTIONS } from "@/lib/constants/status";
+import type { ApplicationStatus } from "@/types/domain";
 import { applicationOsService } from "@/lib/services/application-os-service";
 
 export type CreateApplicationActionState = {
@@ -26,6 +27,30 @@ const bulkUpdateApplicationStatusSchema = z.object({
   applicationIds: z.string().min(1).transform(s => s.split(",").filter(Boolean)),
   status: z.enum(APPLICATION_STATUS_OPTIONS),
 });
+
+const bulkImportApplicationsSchema = z.object({
+  bulkInput: z.string().trim().min(1, "Paste at least one CSV row."),
+});
+
+function parseApplicationCsvRow(line: string): {
+  company: string;
+  jobTitle: string;
+  status: string;
+  appliedAt?: string;
+  notes?: string;
+} | null {
+  const cells = line.split(",").map((c) => c.trim());
+  if (cells.length < 2) return null;
+  const [company, jobTitle, status, appliedAt, ...rest] = cells;
+  if (!company || !jobTitle) return null;
+  return {
+    company,
+    jobTitle,
+    status: status && (APPLICATION_STATUS_OPTIONS as readonly string[]).includes(status) ? status : "DRAFT",
+    appliedAt: appliedAt || undefined,
+    notes: rest.join(",").trim() || undefined,
+  };
+}
 
 const CHANNEL_OPTIONS = ["Email", "Phone", "LinkedIn", "In-person", "Other"] as const;
 
@@ -134,6 +159,74 @@ export async function bulkUpdateApplicationStatusAction(
 export async function getApplicationAction(applicationId: string) {
   const user = await authSession.getCurrentUserOrThrow();
   return applicationOsService.getApplication(user.id, applicationId);
+}
+
+export async function bulkImportApplicationsAction(
+  _prevState: { error: string },
+  formData: FormData,
+): Promise<{ error: string }> {
+  const user = await authSession.getCurrentUserOrThrow();
+  const parsed = bulkImportApplicationsSchema.safeParse({
+    bulkInput: String(formData.get("bulkInput") ?? ""),
+  });
+
+  if (!parsed.success) {
+    return { error: "Invalid input. Use format: company,jobTitle,status,appliedAt,notes" };
+  }
+
+  const lines = parsed.data.bulkInput
+    .split(/\r?\n/)
+    .map((l) => l.trim())
+    .filter(Boolean)
+    .filter((l) => !l.startsWith("#"));
+
+  if (lines.length === 0) {
+    return { error: "No valid rows found." };
+  }
+
+  // Load all jobs once for company+title matching
+  const jobs = await applicationOsService.getJobs(user.id);
+
+  let imported = 0;
+  let skipped = 0;
+
+  for (const line of lines) {
+    const row = parseApplicationCsvRow(line);
+    if (!row) {
+      skipped++;
+      continue;
+    }
+
+    // Match job by company name + title
+    const matchedJob = jobs.find(
+      (j) =>
+        j.company.toLowerCase() === row.company.toLowerCase() &&
+        j.title.toLowerCase() === row.jobTitle.toLowerCase(),
+    );
+
+    if (!matchedJob) {
+      skipped++;
+      continue;
+    }
+
+    try {
+      await applicationOsService.createApplication(user.id, {
+        jobId: matchedJob.id,
+        status: row.status as ApplicationStatus,
+        appliedAt: row.appliedAt,
+        notes: row.notes,
+      });
+      imported++;
+    } catch {
+      skipped++;
+    }
+  }
+
+  safeRevalidatePath("/applications");
+  safeRevalidatePath("/dashboard");
+
+  console.info(`[bulkImportApplications] imported=${imported} skipped=${skipped} user=${user.id}`);
+  return { error: "" };
 }
 
 export type BulkCreateFollowUpsActionState = {
