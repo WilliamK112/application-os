@@ -1,7 +1,7 @@
 "use client";
 
 import { useActionState } from "react";
-import { useEffect, useRef } from "react";
+import { useEffect, useLayoutEffect, useRef } from "react";
 import { createFollowUpAction } from "@/app/followups/actions";
 import type { CreateFollowUpActionState } from "@/app/followups/actions";
 
@@ -16,7 +16,10 @@ export function CreateFollowUpForm({ applicationId, onSuccess }: CreateFollowUpF
     { error: "", success: false },
   );
   const onSuccessRef = useRef(onSuccess);
-  onSuccessRef.current = onSuccess;
+
+  useLayoutEffect(() => {
+    onSuccessRef.current = onSuccess;
+  }, [onSuccess]);
 
   useEffect(() => {
     if (state.success) {
