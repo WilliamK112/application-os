@@ -100,6 +100,8 @@ model User {
   companies           Company[]
   interviewQuestions  InterviewQuestion[]
   AutoApplyQueueItem  AutoApplyQueueItem[]
+  notifications       Notification[]
+  pushSubscriptions   PushSubscription[]
 }
 
 model Interview {
@@ -329,6 +331,48 @@ model InterviewQuestion {
 
   @@index([userId, category])
   @@index([userId])
+}
+
+model Notification {
+  id        String           @id @default(cuid())
+  userId    String
+  type      NotificationType
+  title     String
+  body      String
+  link      String?
+  readAt    DateTime?
+  createdAt DateTime         @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, readAt, createdAt])
+  @@index([userId, createdAt])
+}
+
+model PushSubscription {
+  id        String   @id @default(cuid())
+  userId    String
+  endpoint  String   @unique
+  p256dh    String
+  auth      String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+enum NotificationType {
+  INFO
+  SUCCESS
+  WARNING
+  ERROR
+  INTERVIEW_REMINDER
+  FOLLOW_UP_REMINDER
+  APPLICATION_UPDATE
+  AUTO_APPLY_COMPLETE
+  AUTO_APPLY_FAILED
 }
 
 model InterviewQuestionUsage {

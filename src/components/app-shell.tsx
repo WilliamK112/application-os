@@ -2,6 +2,7 @@
 import Link from "next/link";
 import { useState } from "react";
 import { type ReactNode } from "react";
+import { NotificationBell } from "@/components/notification-bell";
 
 const navItems = [
   { href: "/dashboard", label: "Dashboard" },
@@ -82,15 +83,22 @@ export function AppShell({
 
         <main className="p-4 md:p-6">
           <header className="mb-6 border-b border-slate-200 pb-4">
-            {backHref && (
-              <Link
-                href={backHref}
-                className="mb-2 block text-sm text-slate-500 hover:text-slate-700"
-              >
-                ← Back
-              </Link>
-            )}
-            <h2 className="text-xl font-semibold md:text-2xl">{title}</h2>
+            <div className="flex items-start justify-between gap-4">
+              <div>
+                {backHref && (
+                  <Link
+                    href={backHref}
+                    className="mb-2 block text-sm text-slate-500 hover:text-slate-700"
+                  >
+                    ← Back
+                  </Link>
+                )}
+                <h2 className="text-xl font-semibold md:text-2xl">{title}</h2>
+              </div>
+              <div className="shrink-0">
+                <NotificationBell />
+              </div>
+            </div>
           </header>
           {children}
         </main>
