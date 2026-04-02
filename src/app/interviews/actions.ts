@@ -3,26 +3,10 @@
 import { z } from "zod";
 import { authSession } from "@/lib/auth/session-adapter";
 import { applicationOsService } from "@/lib/services/application-os-service";
-
-const INTERVIEW_TYPE_OPTIONS = [
-  "PHONE_SCREEN",
-  "TECHNICAL",
-  "BEHAVIORAL",
-  "SYSTEM_DESIGN",
-  "ONSITE",
-  "FINAL_ROUND",
-  "OTHER",
-] as const;
-
-const INTERVIEW_TYPE_LABELS: Record<string, string> = {
-  PHONE_SCREEN: "Phone Screen",
-  TECHNICAL: "Technical",
-  BEHAVIORAL: "Behavioral",
-  SYSTEM_DESIGN: "System Design",
-  ONSITE: "Onsite",
-  FINAL_ROUND: "Final Round",
-  OTHER: "Other",
-};
+import {
+  INTERVIEW_TYPE_OPTIONS,
+  INTERVIEW_TYPE_LABELS,
+} from "@/lib/constants/interviews";
 
 const createInterviewSchema = z.object({
   applicationId: z.string().trim().min(1, "Application is required"),
@@ -47,7 +31,7 @@ export async function createInterviewAction(
   _prevState: CreateInterviewActionState,
   formData: FormData,
 ): Promise<CreateInterviewActionState> {
-  const user = await authSession.getCurrentUserOrThrow();
+  const { user } = await authSession();
 
   const parsed = createInterviewSchema.safeParse({
     applicationId: String(formData.get("applicationId") ?? ""),
@@ -112,7 +96,7 @@ export async function updateInterviewAction(
   _prevState: UpdateInterviewActionState,
   formData: FormData,
 ): Promise<UpdateInterviewActionState> {
-  const user = await authSession.getCurrentUserOrThrow();
+  const { user } = await authSession();
 
   const parsed = updateInterviewSchema.safeParse({
     interviewId: String(formData.get("interviewId") ?? ""),
@@ -166,7 +150,7 @@ export async function deleteInterviewAction(
   _prevState: DeleteInterviewActionState,
   formData: FormData,
 ): Promise<DeleteInterviewActionState> {
-  const user = await authSession.getCurrentUserOrThrow();
+  const { user } = await authSession();
   const interviewId = String(formData.get("interviewId") ?? "");
 
   if (!interviewId) {
@@ -182,4 +166,3 @@ export async function deleteInterviewAction(
   }
 }
 
-export { INTERVIEW_TYPE_OPTIONS, INTERVIEW_TYPE_LABELS };

@@ -73,7 +73,7 @@ export function DocumentsClient({
     fd.set("isDefault", String(isDefault ?? false));
     fd.set("url", credsResult.publicUrl);
 
-    const result = await createDocumentAction({}, fd);
+    const result = await createDocumentAction({ error: "" }, fd);
     if (result.error) {
       setError(result.error);
     } else {

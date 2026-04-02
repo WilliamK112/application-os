@@ -22,7 +22,7 @@ export default async function CompanyDetailPage({
   const { company, jobs, totalApplications } = data;
 
   const statusLabel = (status: string) =>
-    JOB_STATUS_OPTIONS.find((s) => s.value === status)?.label ?? status;
+    (JOB_STATUS_OPTIONS as string[]).includes(status) ? status : status;
 
   return (
     <AppShell title={company.name}>

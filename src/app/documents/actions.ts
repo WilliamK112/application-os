@@ -25,7 +25,7 @@ export async function createDocumentAction(
   _prevState: CreateDocumentActionState,
   formData: FormData,
 ): Promise<CreateDocumentActionState> {
-  const user = await authSession.getCurrentUserOrThrow();
+  const { user } = await authSession();
 
   const parsed = createDocumentSchema.safeParse({
     name: String(formData.get("name") ?? ""),
@@ -82,7 +82,7 @@ export async function getUploadUrlAction(
   fileName: string,
   contentType: string,
 ): Promise<{ uploadUrl: string; publicUrl: string; key: string } | { error: string }> {
-  const user = await authSession.getCurrentUserOrThrow();
+  const { user } = await authSession();
 
   if (!isStorageConfigured()) {
     return { error: "S3/R2 storage is not configured. Set APP_OS_S3_* env vars." };

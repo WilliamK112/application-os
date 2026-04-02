@@ -23,7 +23,7 @@ export async function getCurrentUserOrThrow(): Promise<User> {
     email: user.email,
     name: user.name,
     timezone: user.timezone,
-    createdAt: user.createdAt.toISOString(),
-    updatedAt: user.updatedAt.toISOString(),
+    createdAt: user.createdAt instanceof Date ? user.createdAt.toISOString() : user.createdAt,
+    updatedAt: user.updatedAt instanceof Date ? user.updatedAt.toISOString() : user.updatedAt,
   };
 }

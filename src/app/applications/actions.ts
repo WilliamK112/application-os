@@ -79,7 +79,7 @@ export async function createApplicationAction(
   _prevState: CreateApplicationActionState,
   formData: FormData,
 ): Promise<CreateApplicationActionState> {
-  const user = await authSession.getCurrentUserOrThrow();
+  const { user } = await authSession();
 
   const parsed = createApplicationSchema.safeParse({
     jobId: String(formData.get("jobId") ?? ""),
@@ -129,7 +129,7 @@ export async function createApplicationAction(
 }
 
 export async function updateApplicationStatusAction(formData: FormData): Promise<void> {
-  const user = await authSession.getCurrentUserOrThrow();
+  const { user } = await authSession();
 
   const parsed = updateApplicationStatusSchema.parse({
     applicationId: formData.get("applicationId"),
@@ -145,7 +145,7 @@ export async function bulkUpdateApplicationStatusAction(
   applicationIds: string[],
   status: string,
 ): Promise<void> {
-  const user = await authSession.getCurrentUserOrThrow();
+  const { user } = await authSession();
   const parsed = bulkUpdateApplicationStatusSchema.parse({ applicationIds: applicationIds.join(","), status });
   await Promise.all(
     parsed.applicationIds.map((id) =>
@@ -157,7 +157,7 @@ export async function bulkUpdateApplicationStatusAction(
 }
 
 export async function getApplicationAction(applicationId: string) {
-  const user = await authSession.getCurrentUserOrThrow();
+  const { user } = await authSession();
   return applicationOsService.getApplication(user.id, applicationId);
 }
 
@@ -165,7 +165,7 @@ export async function bulkImportApplicationsAction(
   _prevState: { error: string },
   formData: FormData,
 ): Promise<{ error: string }> {
-  const user = await authSession.getCurrentUserOrThrow();
+  const { user } = await authSession();
   const parsed = bulkImportApplicationsSchema.safeParse({
     bulkInput: String(formData.get("bulkInput") ?? ""),
   });
@@ -238,7 +238,7 @@ export async function bulkCreateFollowUpsAction(
   _prevState: BulkCreateFollowUpsActionState,
   formData: FormData,
 ): Promise<BulkCreateFollowUpsActionState> {
-  const user = await authSession.getCurrentUserOrThrow();
+  const { user } = await authSession();
 
   const parsed = bulkCreateFollowUpsSchema.safeParse({
     applicationIds: String(formData.get("applicationIds") ?? ""),

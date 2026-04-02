@@ -3,7 +3,7 @@ import Link from "next/link";
 import { AppShell } from "@/components/app-shell";
 import { getCurrentUserOrThrow } from "@/lib/auth/session";
 import { applicationOsService } from "@/lib/services/application-os-service";
-import { INTERVIEW_TYPE_LABELS } from "@/app/interviews/actions";
+import { INTERVIEW_TYPE_LABELS } from "@/lib/constants/interviews";
 
 const OUTCOME_LABELS: Record<string, string> = {
   positive: "✅ Positive",

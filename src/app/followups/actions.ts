@@ -27,7 +27,7 @@ export async function createFollowUpAction(
   _prevState: CreateFollowUpActionState,
   formData: FormData,
 ): Promise<CreateFollowUpActionState> {
-  const user = await authSession.getCurrentUserOrThrow();
+  const { user } = await authSession();
 
   const parsed = createFollowUpSchema.safeParse({
     applicationId: String(formData.get("applicationId") ?? ""),
@@ -51,7 +51,7 @@ export async function createFollowUpAction(
 }
 
 export async function updateFollowUpStatusAction(formData: FormData): Promise<void> {
-  const user = await authSession.getCurrentUserOrThrow();
+  const { user } = await authSession();
 
   const parsed = updateFollowUpStatusSchema.parse({
     followUpId: formData.get("followUpId"),

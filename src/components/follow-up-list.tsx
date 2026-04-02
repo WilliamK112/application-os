@@ -100,6 +100,7 @@ export function FollowUpList({ followUps, applicationMap }: FollowUpListProps) {
           <FollowUpItem
             key={followUp.id}
             followUp={followUp}
+            applicationLabel={applicationMap[followUp.applicationId] ?? "Unknown Application"}
           />
         ))}
       </div>
@@ -114,6 +115,7 @@ export function FollowUpList({ followUps, applicationMap }: FollowUpListProps) {
               <FollowUpItem
                 key={followUp.id}
                 followUp={followUp}
+                applicationLabel={applicationMap[followUp.applicationId] ?? "Unknown Application"}
               />
             ))}
           </div>

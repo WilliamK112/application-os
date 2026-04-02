@@ -29,7 +29,10 @@ export default async function ApplicationsPage() {
         <p className="mt-1 text-sm text-slate-600">
           CSV format: company,jobTitle,status,appliedAt,notes. Status must be one of: DRAFT, APPLIED, SCREENING, INTERVIEW, OFFER, REJECTED, WITHDRAWN.
         </p>
-        <form action={bulkImportApplicationsAction} className="mt-4 space-y-3">
+        <form action={async (formData) => {
+          "use server";
+          await bulkImportApplicationsAction({ error: "" }, formData);
+        }} className="mt-4 space-y-3">
           <textarea
             name="bulkInput"
             required

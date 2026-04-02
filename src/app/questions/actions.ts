@@ -4,6 +4,10 @@ import { z } from "zod";
 import { authSession } from "@/lib/auth/session-adapter";
 import { applicationOsService } from "@/lib/services/application-os-service";
 
+type QuestionActionState = { error: string; questionId?: string; success?: boolean };
+type CreateQuestionState = QuestionActionState;
+type UpdateQuestionState = QuestionActionState;
+
 const QUESTION_CATEGORY_OPTIONS = [
   "BEHAVIORAL",
   "TECHNICAL",
@@ -35,8 +39,8 @@ const createQuestionSchema = z.object({
 
 const updateQuestionSchema = createQuestionSchema.partial();
 
-export async function createQuestionAction(formData: FormData) {
-  const user = await authSession.getCurrentUserOrThrow();
+export async function createQuestionAction(_prevState: CreateQuestionState, formData: FormData): Promise<CreateQuestionState> {
+  const { user } = await authSession();
 
   const parsed = createQuestionSchema.safeParse({
     category: String(formData.get("category") ?? ""),
@@ -66,8 +70,8 @@ export async function createQuestionAction(formData: FormData) {
   }
 }
 
-export async function updateQuestionAction(formData: FormData) {
-  const user = await authSession.getCurrentUserOrThrow();
+export async function updateQuestionAction(_prevState: UpdateQuestionState, formData: FormData): Promise<UpdateQuestionState> {
+  const { user } = await authSession();
   const questionId = String(formData.get("questionId") ?? "");
 
   if (!questionId) {
@@ -103,7 +107,7 @@ export async function updateQuestionAction(formData: FormData) {
 }
 
 export async function deleteQuestionAction(questionId: string) {
-  const user = await authSession.getCurrentUserOrThrow();
+  const { user } = await authSession();
   try {
     await applicationOsService.deleteQuestion(user.id, questionId);
     return { error: "" };

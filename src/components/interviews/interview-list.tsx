@@ -6,8 +6,8 @@ import {
   createInterviewAction,
   updateInterviewAction,
   deleteInterviewAction,
-  INTERVIEW_TYPE_LABELS,
 } from "@/app/interviews/actions";
+import { INTERVIEW_TYPE_LABELS } from "@/lib/constants/interviews";
 import type { Interview, InterviewQuestion, QuestionCategory } from "@/types/domain";
 
 const OUTCOME_OPTIONS = ["positive", "neutral", "negative", "pending"];

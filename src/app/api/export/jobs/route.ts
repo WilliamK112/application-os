@@ -70,7 +70,20 @@ export async function GET(request: Request) {
       return NextResponse.json({ jobs }, { status: 200 });
     }
 
-    const csv = jobsToCsv(jobs);
+    const csv = jobsToCsv(
+      jobs.map((j) => ({
+        company: j.company,
+        title: j.title,
+        location: j.location ?? null,
+        source: j.source ?? null,
+        status: j.status,
+        url: j.url ?? null,
+        salaryMin: j.salaryMin ?? null,
+        salaryMax: j.salaryMax ?? null,
+        notes: j.notes ?? null,
+        createdAt: String(j.createdAt),
+      })),
+    );
     const timestamp = new Date().toISOString().slice(0, 10);
 
     return new NextResponse(csv, {

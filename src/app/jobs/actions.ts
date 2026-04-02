@@ -51,7 +51,7 @@ const autoApplyHistoryFilterSchema = z.enum([
 ]);
 
 export async function createJobAction(formData: FormData): Promise<void> {
-  const user = await authSession.getCurrentUserOrThrow();
+  const { user } = await authSession();
 
   const parsed = createJobSchema.parse({
     company: formData.get("company"),
@@ -70,7 +70,7 @@ export async function createJobAction(formData: FormData): Promise<void> {
 }
 
 export async function importJobFromUrlAction(formData: FormData): Promise<void> {
-  const user = await authSession.getCurrentUserOrThrow();
+  const { user } = await authSession();
 
   const parsed = importByUrlSchema.parse({
     jobUrl: formData.get("jobUrl"),
@@ -95,7 +95,7 @@ export async function importJobFromUrlAction(formData: FormData): Promise<void> 
 }
 
 export async function bulkImportJobsAction(formData: FormData): Promise<void> {
-  const user = await authSession.getCurrentUserOrThrow();
+  const { user } = await authSession();
 
   const parsed = bulkImportSchema.parse({
     bulkInput: formData.get("bulkInput"),
@@ -143,7 +143,7 @@ export async function runAutoApplyAction(
   formData: FormData,
 ): Promise<AutoApplyResultState> {
   void previousState;
-  const user = await authSession.getCurrentUserOrThrow();
+  const { user } = await authSession();
 
   const historyFilterResult = autoApplyHistoryFilterSchema.safeParse(
     (formData.get("historyFilter") as AutoApplyHistoryFilter | null) ?? "ALL",
@@ -297,7 +297,7 @@ export async function runAutoApplyAction(
 }
 
 export async function updateJobStatusAction(formData: FormData): Promise<void> {
-  const user = await authSession.getCurrentUserOrThrow();
+  const { user } = await authSession();
 
   const parsed = updateJobStatusSchema.parse({
     jobId: formData.get("jobId"),

@@ -28,7 +28,7 @@ export async function addJobsToQueueAction(
   _prevState: unknown,
   formData: FormData,
 ): Promise<{ error: string }> {
-  const user = await authSession.getCurrentUserOrThrow();
+  const { user } = await authSession();
 
   const rawJobIds = formData.getAll("jobIds") as string[];
   const provider = (formData.get("provider") as string) || undefined;
@@ -52,7 +52,7 @@ export async function removeFromQueueAction(
   _prevState: unknown,
   formData: FormData,
 ): Promise<{ error: string }> {
-  const user = await authSession.getCurrentUserOrThrow();
+  const { user } = await authSession();
 
   const rawIds = formData.getAll("queueItemIds") as string[];
   const parsed = removeFromQueueSchema.safeParse({ queueItemIds: rawIds });

@@ -1,22 +1,28 @@
 "use client";
 
 import { useActionState } from "react";
-import { createFollowUpAction } from "./actions";
-
-export type CreateFollowUpFormState = {
-  error: string;
-  success: boolean;
-};
+import { useEffect, useRef } from "react";
+import { createFollowUpAction } from "@/app/followups/actions";
+import type { CreateFollowUpActionState } from "@/app/followups/actions";
 
 interface CreateFollowUpFormProps {
   applicationId: string;
+  onSuccess?: () => void;
 }
 
-export function CreateFollowUpForm({ applicationId }: CreateFollowUpFormProps) {
-  const [state, formAction, isPending] = useActionState<CreateFollowUpFormState, FormData>(
+export function CreateFollowUpForm({ applicationId, onSuccess }: CreateFollowUpFormProps) {
+  const [state, formAction, isPending] = useActionState<CreateFollowUpActionState, FormData>(
     createFollowUpAction,
     { error: "", success: false },
   );
+  const onSuccessRef = useRef(onSuccess);
+  onSuccessRef.current = onSuccess;
+
+  useEffect(() => {
+    if (state.success) {
+      onSuccessRef.current?.();
+    }
+  }, [state.success]);
 
   if (state.success) {
     return (
@@ -27,65 +33,67 @@ export function CreateFollowUpForm({ applicationId }: CreateFollowUpFormProps) {
   }
 
   return (
-    <form action={formAction}>
+    <form action={formAction} className="space-y-3">
       <input type="hidden" name="applicationId" value={applicationId} />
-      <div className="space-y-3">
-        <div>
-          <label htmlFor="dueAt" className="block text-sm font-medium text-slate-700">
-            Due Date
-          </label>
-          <input
-            type="datetime-local"
-            id="dueAt"
-            name="dueAt"
-            required
-            className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
-          />
-        </div>
 
-        <div>
-          <label htmlFor="channel" className="block text-sm font-medium text-slate-700">
-            Channel (optional)
-          </label>
-          <select
-            id="channel"
-            name="channel"
-            className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
-          >
-            <option value="">Select...</option>
-            <option value="Email">Email</option>
-            <option value="Phone">Phone</option>
-            <option value="LinkedIn">LinkedIn</option>
-            <option value="In-person">In-person</option>
-            <option value="Other">Other</option>
-          </select>
-        </div>
-
-        <div>
-          <label htmlFor="content" className="block text-sm font-medium text-slate-700">
-            Action / Content (optional)
-          </label>
-          <textarea
-            id="content"
-            name="content"
-            rows={2}
-            placeholder="e.g. Send thank-you email after interview"
-            className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
-          />
-        </div>
-
-        {state.error && (
-          <p className="text-sm text-red-600">{state.error}</p>
-        )}
-
-        <button
-          type="submit"
+      <div>
+        <label htmlFor="dueAt" className="mb-1 block text-sm font-medium text-slate-700">
+          Due Date
+        </label>
+        <input
+          id="dueAt"
+          name="dueAt"
+          type="datetime-local"
+          required
           disabled={isPending}
-          className="w-full rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50"
-        >
-          {isPending ? "Creating..." : "Add Follow-up"}
-        </button>
+          className="w-full rounded-md border border-slate-300 px-3 py-2 disabled:bg-slate-100"
+        />
       </div>
+
+      <div>
+        <label htmlFor="channel" className="mb-1 block text-sm font-medium text-slate-700">
+          Channel
+        </label>
+        <select
+          id="channel"
+          name="channel"
+          required
+          disabled={isPending}
+          className="w-full rounded-md border border-slate-300 px-3 py-2 disabled:bg-slate-100"
+        >
+          <option value="">Select channel</option>
+          <option value="EMAIL">Email</option>
+          <option value="PHONE">Phone</option>
+          <option value="LINKEDIN">LinkedIn</option>
+          <option value="OTHER">Other</option>
+        </select>
+      </div>
+
+      <div>
+        <label htmlFor="notes" className="mb-1 block text-sm font-medium text-slate-700">
+          Notes
+        </label>
+        <textarea
+          id="notes"
+          name="notes"
+          rows={3}
+          disabled={isPending}
+          className="w-full rounded-md border border-slate-300 px-3 py-2 disabled:bg-slate-100"
+          placeholder="What do you want to follow up about?"
+        />
+      </div>
+
+      {state.error && (
+        <p className="rounded-md bg-red-50 p-2 text-sm text-red-600">{state.error}</p>
+      )}
+
+      <button
+        type="submit"
+        disabled={isPending}
+        className="w-full rounded-md bg-slate-700 py-2 text-sm font-medium text-white hover:bg-slate-600 disabled:opacity-50"
+      >
+        {isPending ? "Saving..." : "Create Follow-up"}
+      </button>
     </form>
   );
 }

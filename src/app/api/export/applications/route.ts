@@ -66,10 +66,10 @@ export async function GET(request: Request) {
       company: aw.job.company,
       jobTitle: aw.job.title,
       status: aw.application.status,
-      appliedAt: aw.application.appliedAt?.toISOString() ?? null,
+      appliedAt: (aw.application.appliedAt ? String(aw.application.appliedAt ?? "") : null),
       notes: aw.application.notes ?? null,
       jobUrl: aw.job.url ?? null,
-      createdAt: aw.application.createdAt.toISOString(),
+      createdAt: String(aw.application.createdAt),
     }));
 
     const csv = applicationsToCsv(rows);

@@ -31,7 +31,9 @@ import type {
   DashboardSnapshot,
   Document,
   FollowUp,
+  FollowUpStatus,
   Interview,
+  InterviewSummary,
   InterviewQuestion,
   InterviewType,
   Job,
@@ -272,7 +274,7 @@ const mapProfile = (profile: PrismaProfile): Profile => ({
 const mapJob = (job: PrismaJob): Job => ({
   id: job.id,
   userId: job.userId,
-  company: job.companyName,
+  company: job.companyName ?? "",
   title: job.title,
   location: job.location ?? undefined,
   source: job.source ?? undefined,
@@ -312,7 +314,7 @@ const mapAutoApplyRunLog = (
   createdAt: runLog.createdAt.toISOString(),
   job: {
     id: runLog.job.id,
-    company: runLog.job.companyName,
+    company: runLog.job.companyName ?? "",
     title: runLog.job.title,
   },
 });
@@ -335,7 +337,7 @@ const mapAutoApplyQueueItem = (
   updatedAt: item.updatedAt.toISOString(),
   job: {
     id: item.job.id,
-    company: item.job.companyName,
+    company: item.job.companyName ?? "",
     title: item.job.title,
     url: item.job.url ?? undefined,
   },
@@ -938,7 +940,7 @@ class MockApplicationOsRepository implements ApplicationOsRepository {
     },
   ];
 
-  private readonly questionUsages: { interviewId: string; questionId: string }[] = [];
+  private questionUsages: { interviewId: string; questionId: string }[] = [];
 
   async listQuestions(userId: string, input?: ListQuestionsInput): Promise<InterviewQuestion[]> {
     let results = this.questions.filter((q) => q.userId === userId);
@@ -978,7 +980,7 @@ class MockApplicationOsRepository implements ApplicationOsRepository {
     const q = this.questions.find((q) => q.id === questionId && q.userId === userId);
     if (!q) throw new Error("Question not found");
     if (input.category !== undefined) q.category = input.category as QuestionCategory;
-    if (input.question !== undefined) q.question = input.question;
+    if (input.question !== undefined) q.question = input.question ?? "";
     if (input.answerHints !== undefined) q.answerHints = input.answerHints ?? undefined;
     if (input.tags !== undefined) q.tags = input.tags;
     q.updatedAt = new Date().toISOString();
@@ -1083,7 +1085,7 @@ class MockApplicationOsRepository implements ApplicationOsRepository {
     const jobs: JobWithAppCount[] = jobsWithApps.map((j) => ({
       id: j.id,
       userId: j.userId,
-      company: j.companyName,
+      company: j.companyName ?? "",
       companyId: j.companyId ?? undefined,
       title: j.title,
       location: j.location ?? undefined,
@@ -1570,7 +1572,7 @@ class PrismaApplicationOsRepository implements ApplicationOsRepository {
     const followUp = await prisma.followUp.updateMany({
       where: { id: input.followUpId, userId },
       data: {
-        status: input.status as Prisma.FollowUpStatus,
+        status: input.status,
         completedAt: input.status === "DONE" ? new Date() : null,
       },
     });
@@ -1684,7 +1686,7 @@ class PrismaApplicationOsRepository implements ApplicationOsRepository {
         ...(input.questions !== undefined && { questions: input.questions }),
         ...(input.rating !== undefined && { rating: input.rating }),
         ...(input.outcome !== undefined && { outcome: input.outcome }),
-      },
+      } as Prisma.InterviewUpdateInput,
     });
 
     return {
@@ -1779,7 +1781,7 @@ class PrismaApplicationOsRepository implements ApplicationOsRepository {
         ...(input.question !== undefined ? { question: input.question } : {}),
         ...(input.answerHints !== undefined ? { answerHints: input.answerHints } : {}),
         ...(input.tags !== undefined ? { tags: input.tags } : {}),
-      },
+      } as Prisma.InterviewQuestionUpdateInput,
     });
 
     return {
@@ -1936,7 +1938,7 @@ class PrismaApplicationOsRepository implements ApplicationOsRepository {
     const jobs: JobWithAppCount[] = jobsWithApps.map((j) => ({
       id: j.id,
       userId: j.userId,
-      company: j.companyName,
+      company: j.companyName ?? "",
       companyId: j.companyId ?? undefined,
       title: j.title,
       location: j.location ?? undefined,
