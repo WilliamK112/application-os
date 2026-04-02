@@ -23,6 +23,29 @@ export default async function ApplicationsPage() {
         <ApplicationCreateForm jobs={jobs} />
       </section>
 
+      <section className="mb-6 rounded-lg border border-slate-200 bg-white p-4">
+        <h3 className="text-lg font-semibold">Export Applications</h3>
+        <p className="mt-1 text-sm text-slate-600">
+          Download your application history as CSV or JSON.
+        </p>
+        <div className="mt-4 flex flex-wrap gap-3">
+          <a
+            href="/api/export/applications"
+            download
+            className="rounded-md bg-slate-700 px-4 py-2 text-sm font-medium text-white hover:bg-slate-600"
+          >
+            ↓ Export CSV
+          </a>
+          <a
+            href="/api/export/applications?format=json"
+            download
+            className="rounded-md bg-white px-4 py-2 text-sm font-medium text-slate-700 ring-1 ring-slate-300 hover:bg-slate-50"
+          >
+            Export JSON
+          </a>
+        </div>
+      </section>
+
       <Suspense fallback={<div className="text-sm text-slate-500 p-4">Loading applications...</div>}>
         <ApplicationsClient rows={rows} />
       </Suspense>

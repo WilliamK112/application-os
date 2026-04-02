@@ -170,6 +170,43 @@ export default async function JobsPage() {
         </form>
       </section>
 
+      <section className="mb-6 rounded-lg border border-slate-200 bg-white p-4">
+        <h3 className="text-lg font-semibold">Export</h3>
+        <p className="mt-1 text-sm text-slate-600">
+          Download your jobs and applications as CSV for backup or spreadsheet analysis.
+        </p>
+        <div className="mt-4 flex flex-wrap gap-3">
+          <a
+            href="/api/export/jobs"
+            download
+            className="rounded-md bg-slate-700 px-4 py-2 text-sm font-medium text-white hover:bg-slate-600"
+          >
+            ↓ Export Jobs CSV
+          </a>
+          <a
+            href="/api/export/applications"
+            download
+            className="rounded-md bg-slate-700 px-4 py-2 text-sm font-medium text-white hover:bg-slate-600"
+          >
+            ↓ Export Applications CSV
+          </a>
+          <a
+            href="/api/export/jobs?format=json"
+            download
+            className="rounded-md bg-white px-4 py-2 text-sm font-medium text-slate-700 ring-1 ring-slate-300 hover:bg-slate-50"
+          >
+            Export Jobs JSON
+          </a>
+          <a
+            href="/api/export/applications?format=json"
+            download
+            className="rounded-md bg-white px-4 py-2 text-sm font-medium text-slate-700 ring-1 ring-slate-300 hover:bg-slate-50"
+          >
+            Export Applications JSON
+          </a>
+        </div>
+      </section>
+
       <AutoApplyPanel
         jobs={jobs.map((job) => ({ id: job.id, company: job.company, title: job.title }))}
         initialHistory={autoApplyHistory}
