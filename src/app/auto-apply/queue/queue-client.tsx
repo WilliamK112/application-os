@@ -1,7 +1,6 @@
 "use client";
 
 import { useActionState, useState } from "react";
-import Link from "next/link";
 import {
   addJobsToQueueAction,
   removeFromQueueAction,
@@ -162,7 +161,6 @@ export function QueueClient({
   availableJobs: Job[];
   currentUserId: string;
 }) {
-  const pendingCount = initialQueue.filter((i) => i.status === "PENDING").length;
   const needsVerification = initialQueue.filter((i) => i.status === "NEEDS_VERIFICATION");
   const completedCount = initialQueue.filter((i) => i.status === "COMPLETED").length;
   const failedCount = initialQueue.filter((i) => i.status === "FAILED").length;
