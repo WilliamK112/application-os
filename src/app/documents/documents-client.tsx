@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useRef } from "react";
-import { createDocumentWithUploadAction, getUploadUrlAction } from "./actions";
+import { createDocumentAction, getUploadUrlAction } from "./actions";
 import type { Document } from "@/types/domain";
 
 const DOC_TYPE_LABELS: Record<string, string> = {
@@ -71,11 +71,9 @@ export function DocumentsClient({
     if (version) fd.set("version", version);
     if (tags) fd.set("tags", tags);
     fd.set("isDefault", String(isDefault ?? false));
-    fd.set("uploadUrl", credsResult.uploadUrl);
-    fd.set("publicUrl", credsResult.publicUrl);
-    fd.set("key", credsResult.key);
+    fd.set("url", credsResult.publicUrl);
 
-    const result = await createDocumentWithUploadAction(fd);
+    const result = await createDocumentAction({}, fd);
     if (result.error) {
       setError(result.error);
     } else {
