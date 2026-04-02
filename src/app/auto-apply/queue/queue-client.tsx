@@ -110,13 +110,12 @@ function AddJobsForm({ jobs }: { jobs: Job[] }) {
       {selected.length > 0 && (
         <div className="mt-3 flex items-center gap-3">
           <span className="text-sm text-slate-600">{selected.length} selected</span>
-          <input type="hidden" name="provider" value="linkedin" />
           <button
             type="button"
             onClick={() => {
               const fd = new FormData();
               selected.forEach((id) => fd.append("jobIds", id));
-              fd.append("provider", "linkedin");
+              fd.append("provider", "auto");
               action(fd);
               setSelected([]);
             }}

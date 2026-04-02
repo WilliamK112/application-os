@@ -1,9 +1,10 @@
 "use server";
 
-import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { z } from "zod";
 import { authSession } from "@/lib/auth/session-adapter";
+import { resolveQueueProvider } from "@/lib/jobs/queue-provider";
+import { revalidateAdapter } from "@/lib/next/revalidate-adapter";
 import { applicationOsService } from "@/lib/services/application-os-service";
 
 const addToQueueSchema = z.object({
@@ -39,9 +40,17 @@ export async function addJobsToQueueAction(
   }
 
   try {
-    await applicationOsService.addJobsToAutoApplyQueue(user.id, parsed.data.jobIds, parsed.data.provider);
-    revalidatePath("/jobs");
-    revalidatePath("/auto-apply/queue");
+    const jobs = await applicationOsService.getJobs(user.id);
+    const jobMap = new Map(jobs.map((job) => [job.id, job]));
+
+    for (const jobId of parsed.data.jobIds) {
+      const job = jobMap.get(jobId);
+      const provider = job ? resolveQueueProvider(job, parsed.data.provider) : parsed.data.provider;
+      await applicationOsService.addJobsToAutoApplyQueue(user.id, [jobId], provider);
+    }
+
+    revalidateAdapter.revalidatePath("/jobs");
+    revalidateAdapter.revalidatePath("/auto-apply/queue");
     return { error: "" };
   } catch (err) {
     return { error: err instanceof Error ? err.message : "Failed to add jobs to queue" };
@@ -62,7 +71,7 @@ export async function removeFromQueueAction(
 
   try {
     await applicationOsService.removeFromQueue(user.id, parsed.data.queueItemIds);
-    revalidatePath("/auto-apply/queue");
+    revalidateAdapter.revalidatePath("/auto-apply/queue");
     return { error: "" };
   } catch (err) {
     return { error: err instanceof Error ? err.message : "Failed to remove from queue" };
@@ -98,7 +107,7 @@ export async function updateQueueItemStatusAction(
         verificationToken: parsed.data.verificationToken,
       },
     );
-    revalidatePath("/auto-apply/queue");
+    revalidateAdapter.revalidatePath("/auto-apply/queue");
     return { error: "" };
   } catch (err) {
     return { error: err instanceof Error ? err.message : "Failed to update queue item" };

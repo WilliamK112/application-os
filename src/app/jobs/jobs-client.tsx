@@ -143,7 +143,7 @@ export function JobsClient({ jobs, companies }: { jobs: Job[]; companies: Compan
             {selectedJobIds.size} job{selectedJobIds.size !== 1 ? "s" : ""} selected
           </span>
           <button
-            onClick={() => addSelectedToQueue("linkedin")}
+            onClick={() => addSelectedToQueue("auto")}
             disabled={isPending}
             className="rounded bg-blue-600 px-3 py-1 text-xs font-medium text-white hover:bg-blue-700 disabled:opacity-50"
           >
