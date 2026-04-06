@@ -16,7 +16,7 @@ test.describe("Jobs page", () => {
     const companyName = `Acme E2E ${Date.now()}`;
     const title = "Frontend Engineer";
 
-    await page.getByLabel("Company").fill(companyName);
+    await page.locator('input[name="company"]').fill(companyName);
     await page.getByLabel("Title").fill(title);
     await page.getByLabel("Location").fill("Remote");
     await page.getByLabel("Source").fill("LinkedIn");
@@ -32,11 +32,11 @@ test.describe("Jobs page", () => {
     const unique1 = `UniqueJob1_${Date.now()}`;
     const unique2 = `UniqueJob2_${Date.now()}`;
 
-    await page.getByLabel("Company").fill(unique1);
+    await page.locator('input[name="company"]').fill(unique1);
     await page.getByLabel("Title").fill("Engineer A");
     await page.getByRole("button", { name: "Create Job" }).click();
 
-    await page.getByLabel("Company").fill(unique2);
+    await page.locator('input[name="company"]').fill(unique2);
     await page.getByLabel("Title").fill("Engineer B");
     await page.getByRole("button", { name: "Create Job" }).click();
 
@@ -51,13 +51,13 @@ test.describe("Jobs page", () => {
     const appliedJob = `AppliedJob_${Date.now()}`;
 
     // Create SAVED job
-    await page.getByLabel("Company").fill(savedJob);
+    await page.locator('input[name="company"]').fill(savedJob);
     await page.getByLabel("Title").fill("Job 1");
     await page.getByRole("button", { name: "Create Job" }).click();
     await expect(page.getByText(savedJob)).toBeVisible({ timeout: 5000 });
 
     // Create APPLIED job via status select
-    await page.getByLabel("Company").fill(appliedJob);
+    await page.locator('input[name="company"]').fill(appliedJob);
     await page.getByLabel("Title").fill("Job 2");
     // Find the status select in the form (not the filter bar)
     const statusSelect = page.locator("form").filter({ hasText: "Create Job" }).locator("select[name='status']");
