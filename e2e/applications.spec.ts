@@ -17,7 +17,7 @@ test.describe("Applications page", () => {
   });
 
   test("renders applications page", async ({ page }) => {
-    await expect(page.getByPlaceholder("Search company or title...")).toBeVisible();
+    await expect(page.getByRole("heading", { name: /applications/i }).first()).toBeVisible();
     await expect(page.getByText("Add Application")).toBeVisible();
   });
 
