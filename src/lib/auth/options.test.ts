@@ -43,18 +43,18 @@ test("credentials authorize locks out by email after repeated failed attempts", 
   }> = [];
 
   try {
-    (prisma.user.findUnique as unknown as (typeof prisma.user.findUnique)) = (async () => ({
+    (prisma.user.findUnique as unknown) = (async () => ({
       id: "user_1",
       email: "test@example.com",
       name: "Test User",
       timezone: "America/Chicago",
       passwordHash: validPasswordHash,
-    })) as typeof prisma.user.findUnique;
+    })) as unknown as typeof prisma.user.findUnique;
 
-    (prisma.user.update as unknown as (typeof prisma.user.update)) = (async (args) => {
+    (prisma.user.update as unknown) = (async (args: { where: { id: string }; data: { lastLoginAt: Date } }) => {
       updateCalls.push(args as { where: { id: string }; data: { lastLoginAt: Date } });
       return { id: "user_1" } as never;
-    }) as typeof prisma.user.update;
+    }) as unknown as typeof prisma.user.update;
 
     loginAudit.record = (async (payload) => {
       auditEvents.push(payload as never);
@@ -82,8 +82,8 @@ test("credentials authorize locks out by email after repeated failed attempts", 
     assert.equal(rateLimitedEvent?.ip, "203.0.113.10");
     assert.equal(rateLimitedEvent?.metadata?.outcome, "rate_limited");
   } finally {
-    (prisma.user.findUnique as unknown as (typeof prisma.user.findUnique)) = originalFindUnique;
-    (prisma.user.update as unknown as (typeof prisma.user.update)) = originalUpdate;
+    (prisma.user.findUnique as unknown) = originalFindUnique;
+    (prisma.user.update as unknown) = originalUpdate;
     loginAudit.record = originalAuditRecord;
     loginRateLimitService.resetStore();
   }
@@ -106,15 +106,15 @@ test("credentials authorize records invalid_payload audit event for malformed cr
   }> = [];
 
   try {
-    (prisma.user.findUnique as unknown as (typeof prisma.user.findUnique)) = (async () => {
+    (prisma.user.findUnique as unknown) = (async () => {
       findUniqueCalls += 1;
       return null as never;
-    }) as typeof prisma.user.findUnique;
+    }) as unknown as typeof prisma.user.findUnique;
 
-    (prisma.user.update as unknown as (typeof prisma.user.update)) = (async () => {
+    (prisma.user.update as unknown) = (async () => {
       updateCalls += 1;
       return { id: "unused" } as never;
-    }) as typeof prisma.user.update;
+    }) as unknown as typeof prisma.user.update;
 
     loginAudit.record = (async (payload) => {
       auditEvents.push(payload as never);
@@ -136,8 +136,8 @@ test("credentials authorize records invalid_payload audit event for malformed cr
     assert.equal(invalidPayloadEvent?.ip, "203.0.113.55");
     assert.equal(invalidPayloadEvent?.metadata?.outcome, "invalid_payload");
   } finally {
-    (prisma.user.findUnique as unknown as (typeof prisma.user.findUnique)) = originalFindUnique;
-    (prisma.user.update as unknown as (typeof prisma.user.update)) = originalUpdate;
+    (prisma.user.findUnique as unknown) = originalFindUnique;
+    (prisma.user.update as unknown) = originalUpdate;
     loginAudit.record = originalAuditRecord;
     loginRateLimitService.resetStore();
   }
@@ -160,15 +160,15 @@ test("credentials authorize malformed payload audit falls back to unknown ip whe
   }> = [];
 
   try {
-    (prisma.user.findUnique as unknown as (typeof prisma.user.findUnique)) = (async () => {
+    (prisma.user.findUnique as unknown) = (async () => {
       findUniqueCalls += 1;
       return null as never;
-    }) as typeof prisma.user.findUnique;
+    }) as unknown as typeof prisma.user.findUnique;
 
-    (prisma.user.update as unknown as (typeof prisma.user.update)) = (async () => {
+    (prisma.user.update as unknown) = (async () => {
       updateCalls += 1;
       return { id: "unused" } as never;
-    }) as typeof prisma.user.update;
+    }) as unknown as typeof prisma.user.update;
 
     loginAudit.record = (async (payload) => {
       auditEvents.push(payload as never);
@@ -187,8 +187,8 @@ test("credentials authorize malformed payload audit falls back to unknown ip whe
     assert.equal(invalidPayloadEvent?.ip, "unknown");
     assert.equal(invalidPayloadEvent?.metadata?.outcome, "invalid_payload");
   } finally {
-    (prisma.user.findUnique as unknown as (typeof prisma.user.findUnique)) = originalFindUnique;
-    (prisma.user.update as unknown as (typeof prisma.user.update)) = originalUpdate;
+    (prisma.user.findUnique as unknown) = originalFindUnique;
+    (prisma.user.update as unknown) = originalUpdate;
     loginAudit.record = originalAuditRecord;
     loginRateLimitService.resetStore();
   }
@@ -210,17 +210,17 @@ test("credentials authorize locks out by IP across different emails", async () =
   }> = [];
 
   try {
-    (prisma.user.findUnique as unknown as (typeof prisma.user.findUnique)) = (async (args) => ({
+    (prisma.user.findUnique as unknown) = (async (args: { where: { email: string } }) => ({
       id: "user_2",
       email: (args as { where: { email: string } }).where.email,
       name: "Another User",
       timezone: "America/Chicago",
       passwordHash: validPasswordHash,
-    })) as typeof prisma.user.findUnique;
+    })) as unknown as typeof prisma.user.findUnique;
 
-    (prisma.user.update as unknown as (typeof prisma.user.update)) = (async () => ({
+    (prisma.user.update as unknown) = (async () => ({
       id: "user_2",
-    })) as typeof prisma.user.update;
+    })) as unknown as typeof prisma.user.update;
 
     loginAudit.record = (async (payload) => {
       auditEvents.push(payload as never);
@@ -249,8 +249,8 @@ test("credentials authorize locks out by IP across different emails", async () =
     assert.equal(rateLimitedEvent?.ip, ip);
     assert.equal(rateLimitedEvent?.metadata?.outcome, "rate_limited");
   } finally {
-    (prisma.user.findUnique as unknown as (typeof prisma.user.findUnique)) = originalFindUnique;
-    (prisma.user.update as unknown as (typeof prisma.user.update)) = originalUpdate;
+    (prisma.user.findUnique as unknown) = originalFindUnique;
+    (prisma.user.update as unknown) = originalUpdate;
     loginAudit.record = originalAuditRecord;
     loginRateLimitService.resetStore();
   }
@@ -274,18 +274,18 @@ test("credentials authorize clears failure buckets on successful login", async (
   }> = [];
 
   try {
-    (prisma.user.findUnique as unknown as (typeof prisma.user.findUnique)) = (async () => ({
+    (prisma.user.findUnique as unknown) = (async () => ({
       id: "user_3",
       email: "clear@example.com",
       name: "Clear User",
       timezone: "America/Chicago",
       passwordHash: validPasswordHash,
-    })) as typeof prisma.user.findUnique;
+    })) as unknown as typeof prisma.user.findUnique;
 
-    (prisma.user.update as unknown as (typeof prisma.user.update)) = (async () => {
+    (prisma.user.update as unknown) = (async () => {
       updateCalls += 1;
       return { id: "user_3" } as never;
-    }) as typeof prisma.user.update;
+    }) as unknown as typeof prisma.user.update;
 
     loginAudit.record = (async (payload) => {
       auditEvents.push(payload as never);
@@ -338,8 +338,8 @@ test("credentials authorize clears failure buckets on successful login", async (
     assert.equal(rateLimitedEvent?.event, "auth.login.failed");
     assert.equal(rateLimitedEvent?.metadata?.outcome, "rate_limited");
   } finally {
-    (prisma.user.findUnique as unknown as (typeof prisma.user.findUnique)) = originalFindUnique;
-    (prisma.user.update as unknown as (typeof prisma.user.update)) = originalUpdate;
+    (prisma.user.findUnique as unknown) = originalFindUnique;
+    (prisma.user.update as unknown) = originalUpdate;
     loginAudit.record = originalAuditRecord;
     loginRateLimitService.resetStore();
   }

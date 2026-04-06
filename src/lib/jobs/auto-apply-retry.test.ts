@@ -11,15 +11,8 @@ const baseLog = {
   applicationId: null,
   job: {
     id: "job-1",
-    userId: "user-1",
     company: "Acme",
     title: "Engineer",
-    location: null,
-    source: null,
-    url: null,
-    status: "SAVED",
-    createdAt: new Date("2026-03-28T20:00:00.000Z").toISOString(),
-    updatedAt: new Date("2026-03-28T20:00:00.000Z").toISOString(),
   },
 } satisfies Omit<AutoApplyRunLog, "status" | "jobId">;
 
