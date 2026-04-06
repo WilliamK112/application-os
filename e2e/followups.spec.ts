@@ -23,7 +23,7 @@ test.describe("Follow-ups page", () => {
     const jobSelect = page.locator("select[name='jobId']").first();
     await jobSelect.selectOption({ index: 0 });
     await page.getByRole("button", { name: "Add Application" }).click();
-    await expect(page.getByText(new RegExp(jobCompany, "i")).first()).toBeVisible({ timeout: 5000 });
+    await expect(page.locator("section, main").getByText(new RegExp(jobCompany, "i")).first()).toBeVisible({ timeout: 5000 });
 
     // Navigate to follow-ups
     await page.goto("/followups");
