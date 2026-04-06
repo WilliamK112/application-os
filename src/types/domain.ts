@@ -204,7 +204,7 @@ export interface AutoApplyRunLog {
   status: AutoApplyRunStatus;
   failureCategory?: AutoApplyFailureCategory;
   message: string;
-  applicationId?: string;
+  applicationId?: string | null;
   createdAt: ISODateString;
   job: Pick<Job, "id" | "company" | "title">;
 }
