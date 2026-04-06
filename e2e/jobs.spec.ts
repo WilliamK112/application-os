@@ -22,9 +22,9 @@ test.describe("Jobs page", () => {
     await page.getByLabel("Source").fill("LinkedIn");
     await page.getByRole("button", { name: "Create Job" }).click();
 
-    // Should show the new job in the list
-    await expect(page.getByText(companyName)).toBeVisible({ timeout: 5000 });
-    await expect(page.getByText(title)).toBeVisible();
+    // Should show the new job in the table
+    await expect(page.getByRole("cell", { name: companyName }).first()).toBeVisible({ timeout: 5000 });
+    await expect(page.getByRole("cell", { name: title }).first()).toBeVisible();
   });
 
   test("filters jobs by search term", async ({ page }) => {
@@ -42,8 +42,8 @@ test.describe("Jobs page", () => {
 
     // Search for unique1
     await page.getByPlaceholder("Search company or title...").fill(unique1);
-    await expect(page.getByText(unique1)).toBeVisible();
-    await expect(page.getByText(unique2)).not.toBeVisible();
+    await expect(page.getByRole("cell", { name: unique1 }).first()).toBeVisible();
+    await expect(page.getByRole("cell", { name: unique2 })).toHaveCount(0);
   });
 
   test("filters jobs by status", async ({ page }) => {
@@ -54,28 +54,24 @@ test.describe("Jobs page", () => {
     await page.locator('input[name="company"]').fill(savedJob);
     await page.getByLabel("Title").fill("Job 1");
     await page.getByRole("button", { name: "Create Job" }).click();
-    await expect(page.getByText(savedJob)).toBeVisible({ timeout: 5000 });
+    await expect(page.getByRole("cell", { name: savedJob }).first()).toBeVisible({ timeout: 5000 });
 
     // Create APPLIED job via status select
     await page.locator('input[name="company"]').fill(appliedJob);
     await page.getByLabel("Title").fill("Job 2");
-    // Find the status select in the form (not the filter bar)
     const statusSelect = page.locator("form").filter({ hasText: "Create Job" }).locator("select[name='status']");
     await statusSelect.selectOption("APPLIED");
     await page.getByRole("button", { name: "Create Job" }).click();
-    await expect(page.getByText(appliedJob)).toBeVisible({ timeout: 5000 });
+    await expect(page.getByRole("cell", { name: appliedJob }).first()).toBeVisible({ timeout: 5000 });
 
     // Filter by SAVED
     await page.locator("select").filter({ hasText: "All statuses" }).first().selectOption("SAVED");
-    await expect(page.getByText(savedJob)).toBeVisible();
+    await expect(page.getByRole("cell", { name: savedJob }).first()).toBeVisible();
   });
 
   test("sorts jobs by company A-Z", async ({ page }) => {
-    // Use the sort dropdown
     const sortSelect = page.locator("select").filter({ hasText: /sort|recently/i }).first();
     await sortSelect.selectOption("company-asc");
-
-    // Table should still be visible (sorting is client-side)
     await expect(page.getByRole("table")).toBeVisible();
   });
 });

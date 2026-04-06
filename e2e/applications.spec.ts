@@ -6,10 +6,10 @@ test.describe("Applications page", () => {
 
     // Create a job to apply to (shared setup)
     const companyName = `AppTestCo_${Date.now()}`;
-    await page.getByLabel("Company").fill(companyName);
+    await page.locator('input[name="company"]').fill(companyName);
     await page.getByLabel("Title").fill("Test Engineer");
     await page.getByRole("button", { name: "Create Job" }).click();
-    await expect(page.getByText(companyName)).toBeVisible({ timeout: 5000 });
+    await expect(page.getByRole("cell", { name: companyName }).first()).toBeVisible({ timeout: 5000 });
 
     // Navigate to applications
     await page.goto("/applications");

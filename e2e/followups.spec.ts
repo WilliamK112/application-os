@@ -11,10 +11,10 @@ test.describe("Follow-ups page", () => {
     jobCompany = `FollowUpCo_${Date.now()}`;
     jobTitle = "Product Manager";
 
-    await page.getByLabel("Company").fill(jobCompany);
+    await page.locator('input[name="company"]').fill(jobCompany);
     await page.getByLabel("Title").fill(jobTitle);
     await page.getByRole("button", { name: "Create Job" }).click();
-    await expect(page.getByText(jobCompany)).toBeVisible({ timeout: 5000 });
+    await expect(page.getByRole("cell", { name: jobCompany }).first()).toBeVisible({ timeout: 5000 });
 
     // Create application
     await page.goto("/applications");
@@ -23,7 +23,7 @@ test.describe("Follow-ups page", () => {
     const jobSelect = page.locator("select[name='jobId']").first();
     await jobSelect.selectOption({ index: 0 });
     await page.getByRole("button", { name: "Add Application" }).click();
-    await expect(page.getByText(jobCompany)).toBeVisible({ timeout: 5000 });
+    await expect(page.getByText(new RegExp(jobCompany, "i")).first()).toBeVisible({ timeout: 5000 });
 
     // Navigate to follow-ups
     await page.goto("/followups");
