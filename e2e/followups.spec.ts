@@ -21,7 +21,8 @@ test.describe("Follow-ups page", () => {
     const jobSelect = page.locator("select[name='jobId']").first();
     await jobSelect.selectOption({ index: 1 });
     await page.getByRole("button", { name: "Create Application" }).click();
-    await expect(page.locator("main").getByText(new RegExp(jobCompany, "i")).first()).toBeVisible({ timeout: 5000 });
+    await page.getByPlaceholder("Search...").fill(jobCompany);
+    await expect(page.getByText(new RegExp(jobCompany, "i"))).toHaveCount(1, { timeout: 5000 });
 
     await page.goto("/followups");
     await expect(page).toHaveURL("/followups");
