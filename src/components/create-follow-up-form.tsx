@@ -2,6 +2,7 @@
 
 import { useActionState } from "react";
 import { useEffect, useLayoutEffect, useRef } from "react";
+import { useRouter } from "next/navigation";
 import { createFollowUpAction } from "@/app/followups/actions";
 import type { CreateFollowUpActionState } from "@/app/followups/actions";
 
@@ -11,6 +12,7 @@ interface CreateFollowUpFormProps {
 }
 
 export function CreateFollowUpForm({ applicationId, onSuccess }: CreateFollowUpFormProps) {
+  const router = useRouter();
   const [state, formAction, isPending] = useActionState<CreateFollowUpActionState, FormData>(
     createFollowUpAction,
     { error: "", success: false },
@@ -23,9 +25,10 @@ export function CreateFollowUpForm({ applicationId, onSuccess }: CreateFollowUpF
 
   useEffect(() => {
     if (state.success) {
+      router.refresh();
       onSuccessRef.current?.();
     }
-  }, [state.success]);
+  }, [router, state.success]);
 
   if (state.success) {
     return (
@@ -65,10 +68,10 @@ export function CreateFollowUpForm({ applicationId, onSuccess }: CreateFollowUpF
           className="w-full rounded-md border border-slate-300 px-3 py-2 disabled:bg-slate-100"
         >
           <option value="">Select channel</option>
-          <option value="EMAIL">Email</option>
-          <option value="PHONE">Phone</option>
-          <option value="LINKEDIN">LinkedIn</option>
-          <option value="OTHER">Other</option>
+          <option value="Email">Email</option>
+          <option value="Phone">Phone</option>
+          <option value="LinkedIn">LinkedIn</option>
+          <option value="Other">Other</option>
         </select>
       </div>
 
@@ -78,7 +81,7 @@ export function CreateFollowUpForm({ applicationId, onSuccess }: CreateFollowUpF
         </label>
         <textarea
           id="notes"
-          name="notes"
+          name="content"
           rows={3}
           disabled={isPending}
           className="w-full rounded-md border border-slate-300 px-3 py-2 disabled:bg-slate-100"
