@@ -19,6 +19,7 @@ test.describe("Applications page", () => {
   test("renders applications page", async ({ page }) => {
     await expect(page.getByRole("heading", { name: /applications/i }).first()).toBeVisible();
     await expect(page.getByRole("heading", { name: /add application/i })).toBeVisible();
+    await expect(page.getByPlaceholder("Search...")).toBeVisible();
   });
 
   test("creates an application", async ({ page }) => {
@@ -28,7 +29,8 @@ test.describe("Applications page", () => {
     await jobSelect.selectOption({ index: 1 });
     await page.getByRole("button", { name: "Create Application" }).click();
 
-    await expect(page.locator("main").getByText(new RegExp(companyName, "i")).first()).toBeVisible({ timeout: 5000 });
+    await page.getByPlaceholder("Search...").fill(companyName);
+    await expect(page.getByText(new RegExp(companyName, "i"))).toHaveCount(1, { timeout: 5000 });
   });
 
   test("updates application status", async ({ page }) => {
@@ -43,6 +45,7 @@ test.describe("Applications page", () => {
     const saveButton = page.locator("button[type='submit']").filter({ hasText: "Save" }).first();
     await saveButton.click();
 
-    await expect(page.locator("main").getByText(/^INTERVIEW$/).first()).toBeVisible({ timeout: 5000 });
+    await page.locator("select[name='status']").first().waitFor({ state: "visible" });
+    await expect(page.locator("select[name='status']").first()).toHaveValue("INTERVIEW");
   });
 });
