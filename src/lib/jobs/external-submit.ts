@@ -1,10 +1,10 @@
 import { loadApplicantProfileFromEnv } from "@/lib/jobs/applicant-profile";
+import { composeUnifiedApplicantProfile } from "@/lib/jobs/unified-applicant-profile";
 import {
   PROVIDER_FIELD_MAP,
   type SupportedProvider,
 } from "@/lib/jobs/provider-submit-config";
-import { probeGreenhouseApplicationPage } from "@/lib/jobs/greenhouse-submit-client";
-import { probeLeverApplicationPage } from "@/lib/jobs/lever-submit-client";
+import { getProviderAdapter } from "@/lib/jobs/provider-adapter-registry";
 import { buildProviderSubmitPayload } from "@/lib/jobs/provider-submit-plan";
 import type { JobApplyProvider } from "@/lib/jobs/providers";
 import type { AutoApplyFailureCategory } from "@/types/domain";
@@ -33,6 +33,24 @@ export type ExternalSubmitRequest = {
   payloadOverrides?: Partial<Record<string, string>>;
 };
 
+function getUnifiedApplicantProfile() {
+  return composeUnifiedApplicantProfile({ documents: [] });
+}
+
+function getUnifiedApplicantProfileDiagnostics(): string[] {
+  return getUnifiedApplicantProfile().diagnostics.filter((item) => item.startsWith("Missing applicant "));
+}
+
+function hasUnifiedApplicantCoreFields(): boolean {
+  const unifiedProfile = getUnifiedApplicantProfile();
+
+  return Boolean(
+    unifiedProfile.fullName &&
+      unifiedProfile.email &&
+      unifiedProfile.phone,
+  );
+}
+
 function buildSubmitPlanMessage(
   provider: SupportedProvider,
   payloadOverrides?: Partial<Record<string, string>>,
@@ -50,6 +68,7 @@ function buildSubmitPlanMessage(
     .join(", ");
 
   const profile = loadApplicantProfileFromEnv();
+  const unifiedDiagnostics = getUnifiedApplicantProfileDiagnostics();
   const payloadPlan = buildProviderSubmitPayload(provider, payloadOverrides);
   const payloadKeys = Object.keys(payloadPlan.payload);
 
@@ -64,6 +83,9 @@ function buildSubmitPlanMessage(
     return (
       `Submit plan (${provider}): required mappings [${requiredMappings}] are blocked; ` +
       `missing env vars: ${profile.missing.join(", ")}. ` +
+      (unifiedDiagnostics.length > 0
+        ? `Unified applicant diagnostics: ${unifiedDiagnostics.join(" | ")}. `
+        : "") +
       `Optional mappings: [${optionalMappings}]. ` +
       `${payloadSummary} ` +
       `Missing required payload env vars [${payloadPlan.missingRequiredEnvVars.join(", ")}]. ` +
@@ -85,30 +107,17 @@ function buildSubmitPlanMessage(
   );
 }
 
-async function probeProviderPage(
-  provider: SupportedProvider,
-  url: string,
-  fetchFn: FetchLike,
-  payloadOverrides?: Partial<Record<string, string>>,
-): Promise<ExternalSubmitResult> {
-  const submitPlanMessage = buildSubmitPlanMessage(provider, payloadOverrides);
-
-  if (provider === "greenhouse") {
-    return probeGreenhouseApplicationPage(url, fetchFn, submitPlanMessage);
-  }
-
-  return probeLeverApplicationPage(url, fetchFn, submitPlanMessage);
-}
-
 export async function submitExternalApplication(
   request: ExternalSubmitRequest,
 ): Promise<ExternalSubmitResult> {
   const { provider, dryRun, jobUrl } = request;
 
-  if (provider !== "greenhouse" && provider !== "lever") {
+  const adapter = getProviderAdapter(provider);
+
+  if (!adapter) {
     return {
       status: "needs_manual",
-      message: `External auto-submit is not supported for provider: ${provider}.`,
+      message: `External auto-submit is unregistered for provider: ${provider}. Manual handling required.`,
     };
   }
 
@@ -119,28 +128,45 @@ export async function submitExternalApplication(
     };
   }
 
-  const submitPlanMessage = buildSubmitPlanMessage(provider, request.payloadOverrides);
+  const submitPlanMessage = buildSubmitPlanMessage(adapter.provider, request.payloadOverrides);
 
   if (dryRun) {
     return {
       status: "needs_manual",
       message:
-        `Dry-run enabled: ${provider} adapter detected. Switch APP_OS_AUTO_APPLY_DRY_RUN=false to probe live page readiness. ` +
+        `Dry-run enabled: ${adapter.provider} adapter detected. Switch APP_OS_AUTO_APPLY_DRY_RUN=false to probe live page readiness. ` +
         submitPlanMessage,
     };
   }
 
   const profile = loadApplicantProfileFromEnv();
-  if (!profile.ok) {
+  const unifiedDiagnostics = getUnifiedApplicantProfileDiagnostics();
+
+  if (!profile.ok || !hasUnifiedApplicantCoreFields()) {
     return {
       status: "needs_manual",
       message:
         `${provider} live submit blocked: missing applicant profile fields: ` +
-        profile.missing.join(", ") +
+        (profile.ok ? "env profile incomplete for live submit parity" : profile.missing.join(", ")) +
+        (unifiedDiagnostics.length > 0
+          ? `. Unified applicant diagnostics: ${unifiedDiagnostics.join(" | ")}`
+          : "") +
         `. ${submitPlanMessage}`,
     };
   }
 
-  const fetchFn = request.fetchFn ?? fetch;
-  return probeProviderPage(provider, jobUrl, fetchFn, request.payloadOverrides);
+  return adapter.submit({
+    provider,
+    job: {
+      id: "external-submit-job",
+      company: "External Company",
+      title: "External Application",
+      url: jobUrl,
+      location: undefined,
+      source: undefined,
+    },
+    applicant: getUnifiedApplicantProfile(),
+    dryRun,
+    fetchFn: request.fetchFn ?? fetch,
+  });
 }

@@ -156,6 +156,26 @@ test("submitExternalApplication returns needs_manual when applicant profile env 
 
   assert.equal(result.status, "needs_manual");
   assert.match(result.message, /missing applicant profile fields/i);
+  assert.match(result.message, /unified applicant diagnostics/i);
+  assert.match(result.message, /Missing applicant full name\./i);
+});
+
+test("submitExternalApplication allows live probe when unified core applicant fields are present even without resume url", async () => {
+  process.env.APP_OS_APPLICANT_FULL_NAME = "Alex Candidate";
+  process.env.APP_OS_APPLICANT_EMAIL = "alex@example.com";
+  process.env.APP_OS_APPLICANT_PHONE = "+1-555-000-1111";
+  delete process.env.APP_OS_APPLICANT_RESUME_URL;
+
+  const result = await submitExternalApplication({
+    provider: "lever",
+    dryRun: false,
+    jobUrl: "https://jobs.lever.co/example/1",
+    fetchFn: async () => new Response("not found", { status: 404 }),
+  });
+
+  assert.equal(result.status, "failed");
+  assert.doesNotMatch(result.message, /missing applicant profile fields/i);
+  assert.match(result.message, /lever request failed during live probe/i);
 });
 
 test("submitExternalApplication returns failed on non-200 response", async () => {
@@ -193,14 +213,15 @@ test("submitExternalApplication returns needs_manual when page has form signal",
   assert.match(result.message, /form .* detected/i);
 });
 
-test("submitExternalApplication returns needs_manual for unsupported provider", async () => {
+test("submitExternalApplication returns needs_manual for workday adapter in dry-run", async () => {
   const result = await submitExternalApplication({
     provider: "workday",
     dryRun: true,
+    jobUrl: "https://example.wd5.myworkdayjobs.com/en-US/External/job/Austin-TX/PM_12345",
   });
 
   assert.equal(result.status, "needs_manual");
-  assert.match(result.message, /not supported/i);
+  assert.match(result.message, /workday adapter detected/i);
 });
 
 test("submitExternalApplication keeps status taxonomy stable across common job board link types", async () => {
@@ -221,19 +242,19 @@ test("submitExternalApplication keeps status taxonomy stable across common job b
       label: "workday",
       url: "https://example.wd5.myworkdayjobs.com/en-US/External/job/Austin-TX/PM_12345",
       expectedProvider: "workday",
-      expectedMessage: /not supported/i,
+      expectedMessage: /adapter detected|submit plan \(workday\)/i,
     },
     {
       label: "ashby",
       url: "https://jobs.ashbyhq.com/company/role",
       expectedProvider: "unknown",
-      expectedMessage: /not supported/i,
+      expectedMessage: /unregistered|manual handling required/i,
     },
     {
       label: "icims",
       url: "https://careers.example.icims.com/jobs/1234/job",
       expectedProvider: "unknown",
-      expectedMessage: /not supported/i,
+      expectedMessage: /unregistered|manual handling required/i,
     },
   ] as const;
 
