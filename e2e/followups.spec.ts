@@ -29,7 +29,7 @@ test.describe("Follow-ups page", () => {
   });
 
   test("renders follow-ups page", async ({ page }) => {
-    await expect(page.getByRole("heading", { name: /follow-up/i })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Pending Follow-ups" })).toBeVisible();
     await expect(page.getByRole("button", { name: /new follow-up/i })).toBeVisible();
   });
 
