@@ -8,7 +8,7 @@ test.describe("Jobs page", () => {
   });
 
   test("renders jobs page with filter bar", async ({ page }) => {
-    await expect(page.getByPlaceholder("Search company or title...")).toBeVisible();
+    await expect(page.getByPlaceholder("Search...")).toBeVisible();
     await expect(page.getByRole("table")).toBeVisible();
   });
 
@@ -41,7 +41,7 @@ test.describe("Jobs page", () => {
     await page.getByRole("button", { name: "Create Job" }).click();
 
     // Search for unique1
-    await page.getByPlaceholder("Search company or title...").fill(unique1);
+    await page.getByPlaceholder("Search...").fill(unique1);
     await expect(page.getByRole("cell", { name: unique1 }).first()).toBeVisible();
     await expect(page.getByRole("cell", { name: unique2 })).toHaveCount(0);
   });
