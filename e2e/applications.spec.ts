@@ -1,10 +1,12 @@
 import { test, expect } from "@playwright/test";
 
 test.describe("Applications page", () => {
+  let companyName: string;
+
   test.beforeEach(async ({ page }) => {
     await page.goto("/jobs");
 
-    const companyName = `AppTestCo_${Date.now()}`;
+    companyName = `AppTestCo_${Date.now()}`;
     await page.locator('input[name="company"]').fill(companyName);
     await page.getByLabel("Title").fill("Test Engineer");
     await page.getByRole("button", { name: "Create Job" }).click();
@@ -26,7 +28,7 @@ test.describe("Applications page", () => {
     await jobSelect.selectOption({ index: 1 });
     await page.getByRole("button", { name: "Create Application" }).click();
 
-    await expect(page.getByText(/AppTestCo/i)).toBeVisible({ timeout: 5000 });
+    await expect(page.locator("main").getByText(new RegExp(companyName, "i")).first()).toBeVisible({ timeout: 5000 });
   });
 
   test("updates application status", async ({ page }) => {
@@ -41,6 +43,6 @@ test.describe("Applications page", () => {
     const saveButton = page.locator("button[type='submit']").filter({ hasText: "Save" }).first();
     await saveButton.click();
 
-    await expect(page.getByText("INTERVIEW")).toBeVisible({ timeout: 5000 });
+    await expect(page.locator("main").getByText(/^INTERVIEW$/).first()).toBeVisible({ timeout: 5000 });
   });
 });
