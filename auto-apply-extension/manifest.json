@@ -1,0 +1,41 @@
+{
+  "manifest_version": 3,
+  "name": "Auto-Apply Helper",
+  "version": "1.0.0",
+  "description": "自动填充求职申请表，一键投递，追踪申请状态",
+  "permissions": [
+    "storage",
+    "activeTab",
+    "scripting"
+  ],
+  "host_permissions": [
+    "*://*.workday.com/*",
+    "*://*.myworkdayjobs.com/*",
+    "*://*.greenhouse.io/*",
+    "*://*.ashbyhq.com/*",
+    "*://*.smartrecruiters.com/*",
+    "*://*.taleo.net/*",
+    "*://*.icims.com/*"
+  ],
+  "action": {
+    "default_popup": "popup.html"
+  },
+  "background": {
+    "service_worker": "background.js"
+  },
+  "content_scripts": [
+    {
+      "matches": [
+        "*://*.workday.com/*",
+        "*://*.myworkdayjobs.com/*",
+        "*://*.greenhouse.io/*",
+        "*://*.ashbyhq.com/*",
+        "*://*.smartrecruiters.com/*",
+        "*://*.taleo.net/*",
+        "*://*.icims.com/*"
+      ],
+      "js": ["content.js"],
+      "run_at": "document_end"
+    }
+  ]
+}
