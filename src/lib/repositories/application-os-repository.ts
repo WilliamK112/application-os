@@ -1443,6 +1443,12 @@ class PrismaApplicationOsRepository implements ApplicationOsRepository {
       verificationToken?: string;
     },
   ): Promise<AutoApplyQueueItem> {
+    const existing = await prisma.autoApplyQueueItem.findFirst({
+      where: { id: queueItemId, userId },
+      select: { id: true },
+    });
+    if (!existing) throw new Error("Queue item not found");
+
     const updated = await prisma.autoApplyQueueItem.update({
       where: { id: queueItemId },
       data: {
