@@ -17,12 +17,10 @@ export function VerifyClient({ queueItem }: { queueItem: AutoApplyQueueItem }) {
     formData.append("queueItemId", queueItem.id);
     formData.append(
       "status",
-      asCompleted ? "COMPLETED" : "NEEDS_VERIFICATION",
+      asCompleted ? "COMPLETED" : "PENDING",
     );
-    if (asCompleted) {
-      // Clear the verification token — it's been resolved
-      formData.append("verificationToken", "");
-    }
+    // Clear the verification token so the stale verification URL is resolved.
+    formData.append("verificationToken", "");
 
     startTransition(async () => {
       const result = await updateQueueItemStatusAction(null, formData);

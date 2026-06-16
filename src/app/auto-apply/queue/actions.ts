@@ -90,7 +90,9 @@ export async function updateQueueItemStatusAction(
     runLogId: formData.get("runLogId") || undefined,
     applicationId: formData.get("applicationId") || undefined,
     errorMessage: formData.get("errorMessage") || undefined,
-    verificationToken: formData.get("verificationToken") || undefined,
+    verificationToken: formData.has("verificationToken")
+      ? String(formData.get("verificationToken"))
+      : undefined,
   });
 
   if (!parsed.success) {

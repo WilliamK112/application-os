@@ -80,12 +80,14 @@ test("updateQueueItemStatusAction uses the authenticated user id", async () => {
 
   let capturedUserId = "";
   let capturedQueueItemId = "";
+  let capturedInput: Parameters<typeof applicationOsService.updateQueueItemStatus>[2] | undefined;
 
   try {
     authSession.getCurrentUserOrThrow = async () => testUser;
     applicationOsService.updateQueueItemStatus = async (userId, queueItemId, input) => {
       capturedUserId = userId;
       capturedQueueItemId = queueItemId;
+      capturedInput = input;
       return {
         id: queueItemId,
         userId,
@@ -117,6 +119,8 @@ test("updateQueueItemStatusAction uses the authenticated user id", async () => {
     assert.equal(result.error, "");
     assert.equal(capturedUserId, testUser.id);
     assert.equal(capturedQueueItemId, "queue_item_1");
+    assert.equal(capturedInput?.status, "COMPLETED");
+    assert.equal(capturedInput?.verificationToken, "");
   } finally {
     authSession.getCurrentUserOrThrow = originalAuthSession.getCurrentUserOrThrow;
     applicationOsService.updateQueueItemStatus = originalUpdateQueueItemStatus;
