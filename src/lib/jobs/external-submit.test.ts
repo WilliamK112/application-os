@@ -224,6 +224,26 @@ test("submitExternalApplication returns needs_manual for workday adapter in dry-
   assert.match(result.message, /workday adapter detected/i);
 });
 
+test("workday dry-run reports a missing required resume instead of declaring mappings ready", async () => {
+  process.env.APP_OS_APPLICANT_FULL_NAME = "Alex Candidate";
+  process.env.APP_OS_APPLICANT_EMAIL = "alex@example.com";
+  process.env.APP_OS_APPLICANT_PHONE = "+1-555-000-1111";
+  delete process.env.APP_OS_APPLICANT_RESUME_URL;
+
+  const result = await submitExternalApplication({
+    provider: "workday",
+    dryRun: true,
+    jobUrl: "https://example.wd5.myworkdayjobs.com/en-US/External/job/Austin-TX/PM_12345",
+  });
+
+  assert.equal(result.status, "needs_manual");
+  assert.doesNotMatch(result.message, /required mappings ready/i);
+  assert.match(
+    result.message,
+    /missing required payload env vars \[APP_OS_APPLICANT_RESUME_URL\]/i,
+  );
+});
+
 test("submitExternalApplication keeps status taxonomy stable across common job board link types", async () => {
   const links = [
     {

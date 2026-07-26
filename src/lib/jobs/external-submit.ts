@@ -94,8 +94,13 @@ function buildSubmitPlanMessage(
     );
   }
 
+  const requiredMappingSummary =
+    payloadPlan.missingRequiredEnvVars.length === 0
+      ? `required mappings ready [${requiredMappings}]. `
+      : `required mappings [${requiredMappings}] are blocked; missing required payload env vars [${payloadPlan.missingRequiredEnvVars.join(", ")}]. `;
+
   return (
-    `Submit plan (${provider}): required mappings ready [${requiredMappings}]. ` +
+    `Submit plan (${provider}): ${requiredMappingSummary}` +
     (payloadPlan.missingOptionalEnvVars.length === 0
       ? `Optional mappings ready [${optionalMappings}]. `
       : `Optional mapping missing [${optionalMappings}] (recommended for fully automated submission). `) +
