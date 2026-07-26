@@ -1,7 +1,6 @@
-export type ApplicantProfile = {
-  fullName: string;
-  email: string;
-  phone: string;
+import type { UnifiedApplicantProfile } from "@/types/applicant-profile";
+
+export type ApplicantProfile = Pick<UnifiedApplicantProfile, "fullName" | "email" | "phone"> & {
   resumeUrl?: string;
 };
 

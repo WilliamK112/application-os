@@ -7,7 +7,7 @@ test("middleware redirects unauthenticated requests to /login with callbackUrl",
   const originalGetToken = middlewareAuth.getToken;
 
   try {
-    middlewareAuth.getToken = async () => null;
+    middlewareAuth.getToken = (async () => null) as never;
 
     const request = new NextRequest("http://localhost/dashboard");
     const response = await middleware(request);

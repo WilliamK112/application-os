@@ -8,7 +8,7 @@ import {
 
 test("provider-submit-config exposes canonical supported providers", () => {
   const providers = Object.keys(PROVIDER_FIELD_MAP).sort();
-  assert.deepEqual(providers, ["greenhouse", "lever"]);
+  assert.deepEqual(providers, ["greenhouse", "lever", "workday"]);
 });
 
 test("provider-submit-config keeps canonical field mapping for greenhouse and lever", () => {
@@ -28,7 +28,7 @@ test("provider-submit-config keeps canonical field mapping for greenhouse and le
 });
 
 test("provider-submit-config unsupported-field lists are locked and provider-aligned", () => {
-  const providers: SupportedProvider[] = ["greenhouse", "lever"];
+  const providers: SupportedProvider[] = ["greenhouse", "lever", "workday"];
 
   for (const provider of providers) {
     const unsupportedFields = PROVIDER_UNSUPPORTED_FIELDS[provider];
@@ -36,8 +36,10 @@ test("provider-submit-config unsupported-field lists are locked and provider-ali
     assert.ok(unsupportedFields.length > 0, `${provider} should have at least one unsupported field`);
     assert.equal(new Set(unsupportedFields).size, unsupportedFields.length, `${provider} unsupported fields should be unique`);
     assert.ok(unsupportedFields.includes("work_authorization"));
-    assert.ok(unsupportedFields.includes("cover_letter"));
   }
+
+  assert.ok(PROVIDER_UNSUPPORTED_FIELDS.greenhouse.includes("cover_letter"));
+  assert.ok(PROVIDER_UNSUPPORTED_FIELDS.lever.includes("cover_letter"));
 
   assert.deepEqual(PROVIDER_UNSUPPORTED_FIELDS.greenhouse, [
     "cover_letter",
@@ -49,5 +51,12 @@ test("provider-submit-config unsupported-field lists are locked and provider-ali
     "cover_letter",
     "portfolio",
     "work_authorization",
+  ]);
+
+  assert.deepEqual(PROVIDER_UNSUPPORTED_FIELDS.workday, [
+    "work_authorization",
+    "education_history",
+    "work_history",
+    "screening_questions",
   ]);
 });

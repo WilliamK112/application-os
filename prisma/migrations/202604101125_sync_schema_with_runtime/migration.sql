@@ -1,23 +1,96 @@
 -- CreateEnum
-CREATE TYPE "AutoApplyQueueStatus" AS ENUM ('PENDING', 'IN_PROGRESS', 'NEEDS_VERIFICATION', 'COMPLETED', 'FAILED');
+DO $$ BEGIN
+  CREATE TYPE "AutoApplyQueueStatus" AS ENUM ('PENDING', 'IN_PROGRESS', 'NEEDS_VERIFICATION', 'COMPLETED', 'FAILED');
+EXCEPTION WHEN duplicate_object THEN NULL; END $$;
+
+-- Replace the legacy enum while preserving existing interview rows.
+DO $$ BEGIN
+  IF EXISTS (SELECT 1 FROM pg_type WHERE typname = 'InterviewType') AND
+     EXISTS (
+       SELECT 1
+       FROM pg_enum
+       JOIN pg_type ON pg_type.oid = pg_enum.enumtypid
+       WHERE pg_type.typname = 'InterviewType'
+         AND pg_enum.enumlabel IN ('TAKE_HOME', 'FINAL')
+     ) THEN
+    CREATE TYPE "InterviewType_new" AS ENUM ('PHONE_SCREEN', 'TECHNICAL', 'BEHAVIORAL', 'SYSTEM_DESIGN', 'ONSITE', 'FINAL_ROUND', 'OTHER');
+    ALTER TABLE "Interview"
+      ALTER COLUMN "interviewType" TYPE "InterviewType_new"
+      USING (
+        CASE "interviewType"::text
+          WHEN 'FINAL' THEN 'FINAL_ROUND'
+          WHEN 'TAKE_HOME' THEN 'TECHNICAL'
+          WHEN 'PHONE_SCREEN' THEN 'PHONE_SCREEN'
+          WHEN 'TECHNICAL' THEN 'TECHNICAL'
+          WHEN 'BEHAVIORAL' THEN 'BEHAVIORAL'
+          WHEN 'SYSTEM_DESIGN' THEN 'SYSTEM_DESIGN'
+          WHEN 'ONSITE' THEN 'ONSITE'
+          WHEN 'FINAL_ROUND' THEN 'FINAL_ROUND'
+          ELSE 'OTHER'
+        END
+      )::"InterviewType_new";
+    DROP TYPE "InterviewType";
+    ALTER TYPE "InterviewType_new" RENAME TO "InterviewType";
+  ELSIF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'InterviewType') THEN
+    CREATE TYPE "InterviewType" AS ENUM ('PHONE_SCREEN', 'TECHNICAL', 'BEHAVIORAL', 'SYSTEM_DESIGN', 'ONSITE', 'FINAL_ROUND', 'OTHER');
+  END IF;
+END $$;
+
+-- Replace the legacy enum while preserving existing question rows.
+DO $$ BEGIN
+  IF EXISTS (SELECT 1 FROM pg_type WHERE typname = 'QuestionCategory') AND
+     EXISTS (
+       SELECT 1
+       FROM pg_enum
+       JOIN pg_type ON pg_type.oid = pg_enum.enumtypid
+       WHERE pg_type.typname = 'QuestionCategory'
+         AND pg_enum.enumlabel IN ('PRODUCT', 'GENERAL')
+     ) THEN
+    CREATE TYPE "QuestionCategory_new" AS ENUM ('BEHAVIORAL', 'TECHNICAL', 'SYSTEM_DESIGN', 'CODING', 'LEADERSHIP', 'CULTURE_FIT', 'COMPENSATION', 'OTHER');
+    ALTER TABLE "InterviewQuestion"
+      ALTER COLUMN "category" TYPE "QuestionCategory_new"
+      USING (
+        CASE "category"::text
+          WHEN 'BEHAVIORAL' THEN 'BEHAVIORAL'
+          WHEN 'TECHNICAL' THEN 'TECHNICAL'
+          WHEN 'SYSTEM_DESIGN' THEN 'SYSTEM_DESIGN'
+          WHEN 'CODING' THEN 'CODING'
+          WHEN 'LEADERSHIP' THEN 'LEADERSHIP'
+          WHEN 'CULTURE_FIT' THEN 'CULTURE_FIT'
+          WHEN 'COMPENSATION' THEN 'COMPENSATION'
+          ELSE 'OTHER'
+        END
+      )::"QuestionCategory_new";
+    DROP TYPE "QuestionCategory";
+    ALTER TYPE "QuestionCategory_new" RENAME TO "QuestionCategory";
+  ELSIF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'QuestionCategory') THEN
+    CREATE TYPE "QuestionCategory" AS ENUM ('BEHAVIORAL', 'TECHNICAL', 'SYSTEM_DESIGN', 'CODING', 'LEADERSHIP', 'CULTURE_FIT', 'COMPENSATION', 'OTHER');
+  END IF;
+END $$;
 
 -- CreateEnum
-CREATE TYPE "InterviewType" AS ENUM ('PHONE_SCREEN', 'TECHNICAL', 'BEHAVIORAL', 'SYSTEM_DESIGN', 'ONSITE', 'FINAL_ROUND', 'OTHER');
-
--- CreateEnum
-CREATE TYPE "QuestionCategory" AS ENUM ('BEHAVIORAL', 'TECHNICAL', 'SYSTEM_DESIGN', 'CODING', 'LEADERSHIP', 'CULTURE_FIT', 'COMPENSATION', 'OTHER');
-
--- CreateEnum
-CREATE TYPE "NotificationType" AS ENUM ('INFO', 'SUCCESS', 'WARNING', 'ERROR', 'INTERVIEW_REMINDER', 'FOLLOW_UP_REMINDER', 'APPLICATION_UPDATE', 'AUTO_APPLY_COMPLETE', 'AUTO_APPLY_FAILED');
+DO $$ BEGIN
+  CREATE TYPE "NotificationType" AS ENUM ('INFO', 'SUCCESS', 'WARNING', 'ERROR', 'INTERVIEW_REMINDER', 'FOLLOW_UP_REMINDER', 'APPLICATION_UPDATE', 'AUTO_APPLY_COMPLETE', 'AUTO_APPLY_FAILED');
+EXCEPTION WHEN duplicate_object THEN NULL; END $$;
 
 -- Preserve old company string data before dropping legacy column
 ALTER TABLE "Job"
 ADD COLUMN IF NOT EXISTS "companyId" TEXT,
 ADD COLUMN IF NOT EXISTS "companyName" TEXT;
 
-UPDATE "Job"
-SET "companyName" = "company"
-WHERE "companyName" IS NULL AND "company" IS NOT NULL;
+DO $$ BEGIN
+  IF EXISTS (
+    SELECT 1
+    FROM information_schema.columns
+    WHERE table_schema = 'public'
+      AND table_name = 'Job'
+      AND column_name = 'company'
+  ) THEN
+    UPDATE "Job"
+    SET "companyName" = "company"
+    WHERE "companyName" IS NULL AND "company" IS NOT NULL;
+  END IF;
+END $$;
 
 DROP INDEX IF EXISTS "Job_company_idx";
 ALTER TABLE "Job" DROP COLUMN IF EXISTS "company";

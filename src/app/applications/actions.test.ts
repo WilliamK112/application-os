@@ -130,7 +130,7 @@ test("createApplicationAction succeeds and normalizes appliedAt to ISO before se
     let capturedInput:
       | {
           jobId: string;
-          status: string;
+          status?: string;
           appliedAt?: string;
           notes?: string;
         }
@@ -140,14 +140,25 @@ test("createApplicationAction succeeds and normalizes appliedAt to ISO before se
       capturedUserId = userId;
       capturedInput = input;
       return {
-        id: "app_1",
-        userId,
-        jobId: input.jobId,
-        status: input.status,
-        appliedAt: input.appliedAt,
-        notes: input.notes,
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
+        application: {
+          id: "app_1",
+          userId,
+          jobId: input.jobId,
+          status: (input.status ?? "DRAFT") as "DRAFT",
+          appliedAt: input.appliedAt,
+          notes: input.notes,
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+        },
+        job: {
+          id: input.jobId,
+          userId,
+          company: "Acme AI",
+          title: "Frontend Engineer",
+          status: "SAVED",
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+        },
       };
     };
 

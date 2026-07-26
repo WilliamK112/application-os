@@ -79,13 +79,16 @@ test("auto-apply run logs persist failureCategory and support failureCategory fi
         input: Array<{
           jobId: string;
           status: "failed" | "success";
-          failureCategory?: "http_failure" | "network_failure" | "manual_handoff";
+          failureCategory?: "http_failure" | "network_failure" | "manual_handoff" | "no_form";
           message: string;
         }>,
       ) => Promise<void>;
       listAutoApplyRunLogs: (
         userId: string,
-        input?: { failureCategory?: "http_failure" | "network_failure" | "manual_handoff"; limit?: number },
+        input?: {
+          failureCategory?: "http_failure" | "network_failure" | "manual_handoff" | "no_form";
+          limit?: number;
+        },
       ) => Promise<Array<{ failureCategory?: string; status: string; jobId: string }>>;
     };
 
