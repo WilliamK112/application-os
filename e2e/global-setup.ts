@@ -11,24 +11,21 @@ export default async function globalSetup() {
 
   try {
     await page.goto(`${BASE_URL}/register`);
-    await page.locator("#name").fill("E2E Test User");
-    await page.locator("#email").fill(E2E_EMAIL);
-    await page.locator("#password").fill(E2E_PASSWORD);
-    await page.locator("#confirmPassword").fill(E2E_PASSWORD);
+    await page.getByLabel("Name").fill("E2E Test User");
+    await page.getByLabel("Email").fill(E2E_EMAIL);
+    await page.getByLabel("Password", { exact: true }).fill(E2E_PASSWORD);
+    await page.getByLabel("Confirm password").fill(E2E_PASSWORD);
     await page.getByRole("button", { name: "Create account" }).click();
 
-    // Register redirects to /login?registered=1 — now login to get session
     await page.waitForURL(/\/login\?registered=1/, { timeout: 10_000 });
+    await page.getByText(/account created\. please sign in\./i).waitFor({ timeout: 10_000 });
 
-    // Login with the just-registered credentials
-    await page.locator("#email").fill(E2E_EMAIL);
-    await page.locator("#password").fill(E2E_PASSWORD);
+    await page.getByLabel("Email").fill(E2E_EMAIL);
+    await page.getByLabel("Password").fill(E2E_PASSWORD);
     await page.getByRole("button", { name: "Sign in" }).click();
 
-    // Wait for redirect to dashboard
     await page.waitForURL(`${BASE_URL}/dashboard`, { timeout: 15_000 });
 
-    // Save auth state
     await context.storageState({
       path: "e2e/.auth/user.json",
     });

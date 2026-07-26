@@ -1,5 +1,6 @@
 "use server";
 
+import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { authSession } from "@/lib/auth/session-adapter";
 import { applicationOsService } from "@/lib/services/application-os-service";
@@ -50,15 +51,29 @@ export async function createFollowUpAction(
   return { error: "", success: true };
 }
 
-export async function updateFollowUpStatusAction(formData: FormData): Promise<void> {
+export async function updateFollowUpStatusAction(
+  _prevState: { error: string },
+  formData: FormData,
+): Promise<{ error: string }> {
   const { user } = await authSession();
 
-  const parsed = updateFollowUpStatusSchema.parse({
-    followUpId: formData.get("followUpId"),
-    status: formData.get("status"),
+  const parsed = updateFollowUpStatusSchema.safeParse({
+    followUpId: String(formData.get("followUpId") ?? ""),
+    status: String(formData.get("status") ?? ""),
   });
 
-  await applicationOsService.updateFollowUpStatus(user.id, parsed);
+  if (!parsed.success) {
+    return { error: parsed.error.issues[0]?.message ?? "Invalid input" };
+  }
+
+  try {
+    await applicationOsService.updateFollowUpStatus(user.id, parsed.data);
+    revalidatePath("/followups");
+    return { error: "" };
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "Unable to update follow-up";
+    return { error: message };
+  }
 }
 
 export async function getApplicationsForFollowUp(userId: string) {

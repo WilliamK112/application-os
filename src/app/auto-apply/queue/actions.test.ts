@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { addJobsToQueueAction } from "@/app/auto-apply/queue/actions";
+import { addJobsToQueueAction, updateQueueItemStatusAction } from "@/app/auto-apply/queue/actions";
 import { authSession } from "@/lib/auth/session-adapter";
 import { revalidateAdapter } from "@/lib/next/revalidate-adapter";
 import { applicationOsService } from "@/lib/services/application-os-service";
@@ -69,6 +69,61 @@ test("addJobsToQueueAction auto-detects per-job providers instead of forcing lin
     authSession.getCurrentUserOrThrow = originalAuthSession.getCurrentUserOrThrow;
     applicationOsService.getJobs = originalGetJobs;
     applicationOsService.addJobsToAutoApplyQueue = originalAddJobsToAutoApplyQueue;
+    revalidateAdapter.revalidatePath = originalRevalidatePath;
+  }
+});
+
+test("updateQueueItemStatusAction uses the authenticated user id", async () => {
+  const originalAuthSession = authSession;
+  const originalUpdateQueueItemStatus = applicationOsService.updateQueueItemStatus.bind(applicationOsService);
+  const originalRevalidatePath = revalidateAdapter.revalidatePath;
+
+  let capturedUserId = "";
+  let capturedQueueItemId = "";
+  let capturedInput: Parameters<typeof applicationOsService.updateQueueItemStatus>[2] | undefined;
+
+  try {
+    authSession.getCurrentUserOrThrow = async () => testUser;
+    applicationOsService.updateQueueItemStatus = async (userId, queueItemId, input) => {
+      capturedUserId = userId;
+      capturedQueueItemId = queueItemId;
+      capturedInput = input;
+      return {
+        id: queueItemId,
+        userId,
+        jobId: "job_greenhouse",
+        job: {
+          id: "job_greenhouse",
+          userId,
+          company: "Acme AI",
+          title: "Platform Engineer",
+          status: "SAVED",
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+        },
+        status: input.status ?? "COMPLETED",
+        provider: "greenhouse",
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      };
+    };
+    revalidateAdapter.revalidatePath = () => {};
+
+    const formData = new FormData();
+    formData.append("queueItemId", "queue_item_1");
+    formData.append("status", "COMPLETED");
+    formData.append("verificationToken", "");
+
+    const result = await updateQueueItemStatusAction(null, formData);
+
+    assert.equal(result.error, "");
+    assert.equal(capturedUserId, testUser.id);
+    assert.equal(capturedQueueItemId, "queue_item_1");
+    assert.equal(capturedInput?.status, "COMPLETED");
+    assert.equal(capturedInput?.verificationToken, "");
+  } finally {
+    authSession.getCurrentUserOrThrow = originalAuthSession.getCurrentUserOrThrow;
+    applicationOsService.updateQueueItemStatus = originalUpdateQueueItemStatus;
     revalidateAdapter.revalidatePath = originalRevalidatePath;
   }
 });

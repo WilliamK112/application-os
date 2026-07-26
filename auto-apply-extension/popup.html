@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      width: 320px;
+      padding: 16px;
+      background: #1a1a2e;
+      color: #eee;
+    }
+    .header {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 16px;
+      padding-bottom: 12px;
+      border-bottom: 1px solid #333;
+    }
+    .header h1 {
+      font-size: 16px;
+      font-weight: 600;
+      color: #00d4ff;
+    }
+    .platform-badge {
+      background: #2d2d44;
+      padding: 4px 10px;
+      border-radius: 12px;
+      font-size: 12px;
+      color: #aaa;
+    }
+    .platform-badge.active {
+      background: #00d4ff22;
+      color: #00d4ff;
+    }
+    .section {
+      margin-bottom: 16px;
+    }
+    .section-title {
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      color: #666;
+      margin-bottom: 8px;
+    }
+    .btn {
+      width: 100%;
+      padding: 12px;
+      border: none;
+      border-radius: 8px;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s;
+      margin-bottom: 8px;
+    }
+    .btn-primary {
+      background: linear-gradient(135deg, #00d4ff, #0099cc);
+      color: #000;
+    }
+    .btn-primary:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 4px 12px rgba(0, 212, 255, 0.3);
+    }
+    .btn-secondary {
+      background: #2d2d44;
+      color: #eee;
+    }
+    .btn-secondary:hover {
+      background: #3d3d54;
+    }
+    .status {
+      padding: 12px;
+      border-radius: 8px;
+      font-size: 13px;
+      text-align: center;
+    }
+    .status.success {
+      background: #00ff8833;
+      color: #00ff88;
+    }
+    .status.error {
+      background: #ff444433;
+      color: #ff4444;
+    }
+    .status.info {
+      background: #00d4ff22;
+      color: #00d4ff;
+    }
+    .profile-preview {
+      background: #2d2d44;
+      border-radius: 8px;
+      padding: 12px;
+      font-size: 12px;
+    }
+    .profile-preview .row {
+      display: flex;
+      justify-content: space-between;
+      padding: 4px 0;
+      border-bottom: 1px solid #3d3d54;
+    }
+    .profile-preview .row:last-child {
+      border-bottom: none;
+    }
+    .profile-preview .label {
+      color: #888;
+    }
+    .profile-preview .value {
+      color: #00d4ff;
+    }
+    .hidden {
+      display: none;
+    }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <h1>🎯 Auto-Apply</h1>
+    <span id="platform" class="platform-badge">Detecting...</span>
+  </div>
+
+  <div id="status-area" class="hidden"></div>
+
+  <div class="section">
+    <div class="section-title">Profile</div>
+    <div class="profile-preview">
+      <div class="row">
+        <span class="label">Name</span>
+        <span class="value">Ching-Wei Kang</span>
+      </div>
+      <div class="row">
+        <span class="label">Email</span>
+        <span class="value">ckang53@wisc.edu</span>
+      </div>
+      <div class="row">
+        <span class="label">School</span>
+        <span class="value">UW-Madison</span>
+      </div>
+      <div class="row">
+        <span class="label">Graduation</span>
+        <span class="value">May 2027</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="section-title">Actions</div>
+    <button id="btn-autofill" class="btn btn-primary">🚀 Auto-Fill Form</button>
+    <button id="btn-resume-autofill" class="btn btn-secondary">📋 Resume Autofill</button>
+    <button id="btn-upload-resume" class="btn btn-secondary">📄 Upload Resume</button>
+    <button id="btn-submit" class="btn btn-secondary">✅ Submit Application</button>
+  </div>
+
+  <div class="section">
+    <div class="section-title">Settings</div>
+    <button id="btn-edit-profile" class="btn btn-secondary">⚙️ Edit Profile</button>
+  </div>
+
+  <script src="popup.js"></script>
+</body>
+</html>

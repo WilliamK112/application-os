@@ -82,13 +82,17 @@ export async function updateQueueItemStatusAction(
   _prevState: unknown,
   formData: FormData,
 ): Promise<{ error: string }> {
+  const { user } = await authSession();
+
   const parsed = updateQueueStatusSchema.safeParse({
     queueItemId: formData.get("queueItemId"),
     status: formData.get("status"),
     runLogId: formData.get("runLogId") || undefined,
     applicationId: formData.get("applicationId") || undefined,
     errorMessage: formData.get("errorMessage") || undefined,
-    verificationToken: formData.get("verificationToken") || undefined,
+    verificationToken: formData.has("verificationToken")
+      ? String(formData.get("verificationToken"))
+      : undefined,
   });
 
   if (!parsed.success) {
@@ -97,7 +101,7 @@ export async function updateQueueItemStatusAction(
 
   try {
     await applicationOsService.updateQueueItemStatus(
-      "user_1", // worker context - bypass auth for internal calls
+      user.id,
       parsed.data.queueItemId,
       {
         status: parsed.data.status,

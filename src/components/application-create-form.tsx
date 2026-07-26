@@ -1,6 +1,7 @@
 "use client";
 
-import { useActionState } from "react";
+import { useActionState, useEffect, useRef } from "react";
+import { useRouter } from "next/navigation";
 import { APPLICATION_STATUS_OPTIONS } from "@/lib/constants/status";
 import { createApplicationAction } from "@/app/applications/actions";
 import type { Job } from "@/types/domain";
@@ -8,7 +9,24 @@ import type { Job } from "@/types/domain";
 const initialState = { error: "" };
 
 export function ApplicationCreateForm({ jobs }: { jobs: Job[] }) {
+  const router = useRouter();
+  const wasPendingRef = useRef(false);
   const [state, formAction, isPending] = useActionState(createApplicationAction, initialState);
+
+  useEffect(() => {
+    if (isPending) {
+      wasPendingRef.current = true;
+      return;
+    }
+
+    if (wasPendingRef.current && !state.error) {
+      wasPendingRef.current = false;
+      router.refresh();
+      return;
+    }
+
+    wasPendingRef.current = false;
+  }, [isPending, router, state.error]);
 
   return (
     <form action={formAction} className="mt-4 grid gap-3 sm:grid-cols-2">
